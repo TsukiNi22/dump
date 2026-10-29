@@ -100,7 +100,7 @@ repository (`install.sh` of its `main` branch), chosen when the setup starts:
 
 | Choice | Content |
 | ------ | ------- |
-| `Wayland` | every style + a switcher in the top bar (click: menu, scroll: next / previous, `Super+Shift+W`) |
+| `Wayland` | every style + a switcher in the top bar (click: menu, scroll: next / previous, `Super+Shift+W`), GNOME-like overview (`Super`), live wallpapers |
 | `System`, `Dev / low level`, `Ado / blue rose`, `Terminal / better-tty`, `Miku`, `Photographer` | one style alone |
 | `Remove the config` | remove the configs, the saved files are put back |
 
@@ -112,7 +112,10 @@ repository (`install.sh` of its `main` branch), chosen when the setup starts:
 
 > [!NOTE]
 > The other packages: `waybar`, `wofi`, `kitty`, `swaybg`, `mako`, `grim`, `slurp`, `wl-clipboard`, `brightnessctl`,
-> `playerctl`, `nautilus`, the Adwaita cursor, JetBrains Mono, Font Awesome and Noto CJK fonts. Log out and choose Hyprland at the login screen.
+> `playerctl`, `nautilus`, `btop`, the Adwaita cursor, the JetBrains Mono, Font Awesome, Noto CJK, Adwaita Sans, Noto Serif
+> and Noto Sans Symbols 2 fonts, `quickshell` (overview), `cava` (music bars), python GTK, WebKit 4.1 and `gtk-layer-shell`
+> (live wallpapers); one missing in the repositories of the family is skipped (the overview falls back to the wofi launcher,
+> the wallpaper to the still image). Log out and choose Hyprland at the login screen.
 
 ## Get Information about usb id (`vendor-id` / `device-id`)
 
