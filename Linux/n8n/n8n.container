@@ -1,0 +1,26 @@
+# n8n Community Edition (self-hosted, free, no execution limit) - http://localhost:5678
+[Unit]
+Description=n8n workflow automation
+After=network-online.target
+
+[Container]
+ContainerName=n8n
+Image=mirror.gcr.io/n8nio/n8n:latest
+# Host network: workflows reach services of this PC on localhost; n8n itself only listens on 127.0.0.1
+Network=host
+Volume=n8n_data:/home/node/.n8n
+Environment=N8N_LISTEN_ADDRESS=127.0.0.1
+Environment=N8N_PORT=5678
+Environment=GENERIC_TIMEZONE=Europe/Paris
+Environment=TZ=Europe/Paris
+Environment=N8N_RUNNERS_ENABLED=true
+Environment=N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
+Environment=N8N_DIAGNOSTICS_ENABLED=false
+Environment=N8N_PERSONALIZATION_ENABLED=false
+
+[Service]
+Restart=always
+TimeoutStartSec=900
+
+[Install]
+WantedBy=default.target

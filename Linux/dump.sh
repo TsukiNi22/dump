@@ -273,6 +273,7 @@ menu_entries() {
         "Package & App" \
         "Custom Package & Binary" \
         "AI" \
+        "N8n" \
         "Git" \
         "Grub & Plymouth" \
         "Quit"
@@ -308,6 +309,7 @@ entry_task() {
         "Package & App") TASK_NAME="PACKAGE-APP"; TASK_CMD=(task_setup "$SCRIPT_DIR/package_app/launch.sh") ;;
         "Custom Package & Binary") TASK_NAME="CUSTOM-PACKAGE"; TASK_CMD=(task_setup "$SCRIPT_DIR/custom_package/launch.sh") ;;
         "AI") TASK_NAME="AI"; TASK_CMD=(task_setup "$SCRIPT_DIR/ai/launch.sh") ;;
+        "N8n") TASK_NAME="N8N"; TASK_CMD=(task_setup "$SCRIPT_DIR/n8n/launch.sh") ;;
         "Git") TASK_NAME="GIT"; TASK_CMD=(task_setup "$SCRIPT_DIR/git/launch.sh") ;;
         "Grub & Plymouth") TASK_NAME="GRUB-PLYMOUTH"; TASK_CMD=(task_setup "$SCRIPT_DIR/grub_plymouth/launch.sh") ;;
         *) return 1 ;;
