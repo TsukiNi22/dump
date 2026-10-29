@@ -26,10 +26,13 @@ vim.api.nvim_create_autocmd("BufWritePre", {
                 local ext = vim.fn.fnamemodify(args.file, ":e")
                 local date = os.date("%d/%m/%Y")
                 local mark = prefix == "" and "##" or prefix .. "**" -- "#**" / "@**" for the Makefile / C15 headers
-                local new_line = mark .. "  " .. date .. " by " .. user
+                -- The author already written is kept, even blank (the header snippet leaves it to fill in)
+                local current = lines[i + 1]
+                local author = current:match("by @author%s*(.-)%s*$") or current:match(" by%s*(.-)%s*$") or user
+                local new_line = mark .. "  " .. date .. " by" .. (author ~= "" and (" " .. author) or "")
 
                 if ext == "cpp" or ext == "hpp" then
-                    new_line = mark .. "  @date " .. date .. " by @author " .. user
+                    new_line = mark .. "  @date " .. date .. " by @author" .. (author ~= "" and (" " .. author) or "")
                 end
                 if lines[i + 1] ~= new_line then
                     vim.api.nvim_buf_set_lines(bufnr, i, i + 1, false, { new_line })

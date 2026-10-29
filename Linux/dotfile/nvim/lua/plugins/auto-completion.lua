@@ -1,7 +1,7 @@
 return {
     {
         'hrsh7th/nvim-cmp',
-        event = 'InsertEnter',
+        lazy = false, -- Loaded at start: the completion of ':' and '/' works from the first use
         dependencies = {
             'hrsh7th/cmp-nvim-lsp',
             'hrsh7th/cmp-buffer',
@@ -17,6 +17,8 @@ return {
             -- Load friendly snippets
             require("luasnip.loaders.from_vscode").lazy_load()
 
+            require('matching.sources').register()
+
             cmp.setup({
                 snippet = {
                     expand = function(args)
@@ -27,11 +29,14 @@ return {
                     ['<C-b>'] = cmp.mapping.scroll_docs(-4),
                     ['<C-f>'] = cmp.mapping.scroll_docs(4),
                     ['<C-Space>'] = cmp.mapping.complete(),
-                    ['<C-e>'] = cmp.mapping.abort(),
+                    ['<C-e>'] = cmp.mapping(function()
+                        require('matching.include_trigger').dismiss() -- No automatic menu again on this line
+                        cmp.abort()
+                    end, { 'i' }),
                     ['<CR>'] = cmp.mapping.confirm({ select = true }), -- Accept completion
-                    ['<Tab>'] = cmp.mapping(function(fallback)
+                    ['<Tab>'] = cmp.mapping(function(fallback) -- Accepts the choice (like Enter), the arrows move in the menu
                         if cmp.visible() then
-                            cmp.select_next_item()
+                            cmp.confirm({ select = true })
                         elseif luasnip.expand_or_jumpable() then
                             luasnip.expand_or_jump()
                         else
@@ -39,26 +44,35 @@ return {
                         end
                     end, { "i", "s" }),
                     ['<S-Tab>'] = cmp.mapping(function(fallback)
-                        if cmp.visible() then
-                            cmp.select_prev_item()
-                        elseif luasnip.jumpable(-1) then
+                        if luasnip.jumpable(-1) then
                             luasnip.jump(-1)
                         else
                             fallback()
                         end
                     end, { "i", "s" }),
                 }),
-                sources = cmp.config.sources({
+                formatting = {
+                    fields = { 'abbr', 'kind', 'menu' },
+                    format = require('matching.sources').format, -- Tag of the source: [kw] [inc] [sym] [file]...
+                },
+                sorting = {
+                    comparators = require('matching.sources').comparators(), -- Special sources first, then c2dmp-hsm
+                },
+                sources = {
                     { name = 'nvim_lsp' },
+                    { name = 'include' },   -- #include "..." / <...>
+                    { name = 'keywords' },  -- Keywords and #directives
+                    { name = 'common' },    -- [std] main, control structures, usual includes and calls
+                    { name = 'symbols', dup = 0 }, -- Functions, types, variables of the file and of its includes
+                    { name = 'members' },   -- After '.', '->' and '::'
                     { name = 'luasnip' },
-                }, {
-                    { name = 'buffer' },
                     { name = 'path' },
-                }),
+                    { name = 'words', dup = 0 },   -- Words of the file, after all the others
+                },
             })
 
-            -- Use cmp for `/` and `:` command-line completions
-            cmp.setup.cmdline('/', {
+            -- Use cmp for `/`, `?` and `:` command-line completions
+            cmp.setup.cmdline({ '/', '?' }, {
                 mapping = cmp.mapping.preset.cmdline(),
                 sources = {
                     { name = 'buffer' }

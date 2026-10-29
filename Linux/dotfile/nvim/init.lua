@@ -1,5 +1,6 @@
 require 'basics.options'
 require 'basics.keymaps' -- Sets the leader key (before lazy)
+require 'basics.autocmds'
 
 -- Set up the Lazy plugin manager
 local lazypath = vim.fn.stdpath 'data' .. '/lazy/lazy.nvim'
@@ -23,10 +24,15 @@ require('lazy').setup({
     --require 'themes.deepwhite',
 
     require 'plugins.auto-completion',
-    --require 'plugins.neotree',
+    --require 'plugins.neotree', -- Replaced by tree/ (Ctrl+T)
     --require 'plugins.header',
     require 'plugins.treesitter',
 })
+
+-- Completion helpers, help under the mouse, warnings & errors (need cmp, loaded above)
+require('matching.include_trigger').setup()
+require('matching.hover').setup()
+require('matching.checks').setup()
 
 -- Update the date of xartania header
 require 'header.update'

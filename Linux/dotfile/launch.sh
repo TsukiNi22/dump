@@ -15,7 +15,7 @@ OMZ_URL="https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.
 # =========================
 # tree-sitter-cli + gcc: build of the nvim-treesitter parsers, util-linux-user: chsh
 install_packages vim-enhanced neovim git gcc tree-sitter-cli fastfetch chafa \
-    zsh zoxide sl tmux curl util-linux-user || exit 1
+    zsh zoxide sl tmux curl util-linux-user wl-clipboard || exit 1
 
 # fastfetch isn't in the old debian-like repositories (ex: ubuntu 24.04): official .deb of its releases
 if ! command -v fastfetch > /dev/null && [[ "$OS_FAMILY" == "deb" ]]; then
@@ -67,12 +67,22 @@ run_as_user mkdir -p "$USER_HOME/.config/git"
 run_as_user cp -rf "$SCRIPT_DIR/nvim" "$USER_HOME/.config/"
 ok "Neovim config setup"
 
+# Optional shared library of the c2dmp matching (needs clang++ and libutils), without it nvim falls back to lua
+if command -v clang++ > /dev/null && run_as_user sh "$USER_HOME/.config/nvim/native/build.sh" > /dev/null 2>&1; then
+    ok "Neovim c2dmp library built"
+else
+    skipped "Neovim c2dmp library (clang++ or libutils missing)"
+fi
+
 # config.jsonc is generated from config_save.jsonc by rdm_img.sh (fastfetch alias)
 run_as_user cp -rf "$SCRIPT_DIR/fastfetch" "$USER_HOME/.config/"
 run_as_user chmod +x "$USER_HOME/.config/fastfetch/rdm_img.sh"
 ok "Fastfetch config setup"
 
 run_as_user cp "$SCRIPT_DIR/.tmux.conf" "$USER_HOME/.tmux.conf"
+run_as_user mkdir -p "$USER_HOME/.config/tmux"
+run_as_user cp "$SCRIPT_DIR/tmux/mode.sh" "$USER_HOME/.config/tmux/mode.sh"
+run_as_user chmod +x "$USER_HOME/.config/tmux/mode.sh"
 ok "Tmux config setup"
 
 run_as_user cp "$SCRIPT_DIR/git/ignore" "$USER_HOME/.config/git/ignore"

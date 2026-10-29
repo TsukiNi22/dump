@@ -27,6 +27,12 @@ vim.keymap.set({'n', 'v'}, '<C-l>', '$', opts)                      --End of lin
 vim.keymap.set('i', '<C-l>', '<C-o>$', opts)                        --End of line (insert)
 vim.keymap.set({'n', 'v'}, 'L', '^', opts)                          --Start of line (normal/visual, overrides default L = bottom of screen)
 
+-- File tree with preview, a state of the window like Ex (the netrw one stays on Ctrl+E)
+vim.keymap.set({'n', 'i'}, '<C-t>', require('tree').open, opts)         --File tree with preview
+
+-- Warnings & errors are hidden by default (matching/checks.lua)
+vim.keymap.set({'n', 'i'}, '<C-d>', function() require('matching.checks').toggle() end, opts) --Show/hide warnings & errors
+
 -- Horizontal splits -> Ctrl+Shift+PageUp/PageDown
 vim.keymap.set({'n', 'i'}, '<C-S-PageUp>',   '<cmd>topleft split<CR>',  opts)  --Horizontal split, new window at top
 vim.keymap.set({'n', 'i'}, '<C-S-PageDown>', '<cmd>botright split<CR>', opts)  --Horizontal split, new window at bottom
