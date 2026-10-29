@@ -305,18 +305,6 @@ pkg_name() {
         deb:plymouth-system-theme) echo "plymouth-themes" ;;
         deb:util-linux-user|deb:dnf-plugins-core|deb:CSFML|deb:udisks-devel|deb:dracut|deb:grub2-common) ;;
         deb:plymouth-scripts|deb:plymouth-plugin-script) ;;
-        deb:libnotify) echo "libnotify-bin" ;;
-        deb:mako) echo "mako-notifier" ;;
-        deb:adwaita-cursor-theme) echo "adwaita-icon-theme" ;;
-        deb:jetbrains-mono-fonts-all) echo "fonts-jetbrains-mono" ;;
-        deb:fontawesome-6-free-fonts) echo "fonts-font-awesome" ;;
-        deb:google-noto-sans-cjk-fonts) echo "fonts-noto-cjk" ;;
-        deb:python3-gobject) echo "python3-gi" ;;
-        deb:python3-cairo) echo "python3-gi-cairo" ;;
-        deb:webkit2gtk4.1) echo "gir1.2-webkit2-4.1" ;;
-        deb:gtk-layer-shell) echo "gir1.2-gtklayershell-0.1" ;;
-        deb:adwaita-sans-fonts) echo "fonts-adwaita" ;;
-        deb:google-noto-serif-vf-fonts|deb:google-noto-sans-symbols-2-fonts) echo "fonts-noto-core" ;;
         # arch-like
         arch:vim-enhanced) echo "vim" ;;
         arch:gcc-c++) echo "gcc" ;;
@@ -341,15 +329,6 @@ pkg_name() {
         arch:util-linux-user|arch:dnf-plugins-core|arch:CSFML-devel|arch:udisks-devel|arch:dracut) ;;
         arch:grub2-common|arch:plymouth-scripts|arch:plymouth-plugin-script|arch:plymouth-system-theme) ;;
         arch:asciiquarium) ;; # AUR only
-        arch:jetbrains-mono-fonts-all) echo "ttf-jetbrains-mono" ;;
-        arch:adwaita-cursor-theme) echo "adwaita-cursors" ;;
-        arch:fontawesome-6-free-fonts) echo "ttf-font-awesome" ;;
-        arch:google-noto-sans-cjk-fonts) echo "noto-fonts-cjk" ;;
-        arch:python3-gobject) echo "python-gobject" ;;
-        arch:python3-cairo) echo "python-cairo" ;;
-        arch:webkit2gtk4.1) echo "webkit2gtk-4.1" ;;
-        arch:adwaita-sans-fonts) echo "adwaita-fonts" ;;
-        arch:google-noto-serif-vf-fonts|arch:google-noto-sans-symbols-2-fonts) echo "noto-fonts" ;;
         *) echo "$1" ;;
     esac
 }

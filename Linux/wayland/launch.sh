@@ -1,7 +1,8 @@
 #!/bin/bash
 # Usage: sudo bash wayland/launch.sh
 # (asks which config: every style with the switcher, one style alone, or remove)
-# Hyprland, waybar and the configs of the wayland-desktop repository (styles inspired by its POCs), installed for the user
+# Hyprland and the configs of the wayland-desktop repository (styles inspired by its POCs): its install.sh installs the
+# packages of the chosen config for the distribution (fedora-like, debian-like, arch-like), then the configs for the user
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -10,32 +11,11 @@ source "$SCRIPT_DIR/../utils.sh"
 WAYLAND_REPO_URL="https://github.com/$GITHUB_USER/wayland-desktop.git"
 WAYLAND_LOCAL_DIR="$USER_HOME/personal_delivery/other/wayland-desktop" # Clone of the Git setup (when on its main branch)
 WAYLAND_MANAGED_DIR="$USER_HOME/.local/share/wayland-desktop"
-HYPRLAND_COPR="sdegler/hyprland" # Fedora: hyprland, hyprlock (not in the Fedora repositories)
-PACKAGES=(hyprland hyprlock waybar wofi kitty swaybg mako grim slurp wl-clipboard brightnessctl playerctl wireplumber
-    libnotify nautilus adwaita-cursor-theme jetbrains-mono-fonts-all fontawesome-6-free-fonts google-noto-sans-cjk-fonts
-    adwaita-sans-fonts google-noto-serif-vf-fonts google-noto-sans-symbols-2-fonts btop
-    quickshell cava python3-gobject python3-cairo webkit2gtk4.1 gtk-layer-shell)
-# fonts of the styles (Adwaita Sans, Noto Serif, the symbols), btop: monitor of the bar, quickshell: GNOME-like overview
-# (else the wofi launcher), cava: music bars, python GTK / WebKit / gtk-layer-shell: live wallpapers (else the still
-# image); a family without one of them skips it
 CONFIG_DIR=""
 
 # =========================
 # Setups
 # =========================
-# Fedora: the hyprland copr (the debian-like and arch-like repositories have hyprland)
-setup_repository() {
-    if [[ "$OS_FAMILY" != "rpm" ]] || pkg_available hyprland; then
-        return 0
-    fi
-    pkg_install dnf-plugins-core && dnf copr enable -y "$HYPRLAND_COPR"
-}
-
-setup_packages() {
-    setup_repository || warning "Copr $HYPRLAND_COPR can't be enabled (hyprland may be missing)"
-    pkg_install "${PACKAGES[@]}"
-}
-
 # The configs: local clone on main (Git setup), else a managed clone kept up to date
 setup_source() {
     if [[ -f "$WAYLAND_LOCAL_DIR/install.sh" ]]; then
@@ -52,8 +32,9 @@ setup_source() {
     fi
 }
 
-setup_configs() {
-    run_as_user env XDG_CONFIG_HOME="$USER_HOME/.config" bash "$CONFIG_DIR/install.sh" "$1"
+# install.sh as root (sudo): the packages of the mode, then the configs for $SUDO_USER
+setup_wayland() {
+    bash "$CONFIG_DIR/install.sh" "$1"
 }
 
 # =========================
@@ -79,13 +60,8 @@ case "$CHOICE" in
         ;;
 esac
 
-status=0
-if [[ "$MODE" != "remove" ]]; then
-    run_step "SETUP-WAYLAND-PACKAGES" "Hyprland, waybar & tools" setup_packages || status=1
-fi
 run_step "SETUP-WAYLAND-SOURCE" "wayland-desktop configs" setup_source || exit 1
-run_step "SETUP-WAYLAND-CONFIG" "Config: $CHOICE" setup_configs "$MODE" || status=1
-if [[ "$MODE" != "remove" && "$status" -eq 0 ]]; then
+run_step "SETUP-WAYLAND" "Wayland: $CHOICE (packages + configs)" setup_wayland "$MODE" || exit 1
+if [[ "$MODE" != "remove" ]]; then
     info "Log out and choose Hyprland at the login screen (Super: overview, Super+Shift+W: style menu)"
 fi
-exit "$status"
