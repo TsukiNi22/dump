@@ -192,7 +192,14 @@ end
 --------------------------------------------------------------------------------
 local common = {}
 local common_cache = {}
-function common:is_available() return #require('matching.common').items(vim.bo.filetype, 'top') > 0 end
+local common_available = {} -- filetype -> bool (the whole catalog was built at each key to know it)
+function common:is_available()
+    local filetype = vim.bo.filetype
+    if common_available[filetype] == nil then
+        common_available[filetype] = #require('matching.common').items(filetype, 'top') > 0
+    end
+    return common_available[filetype]
+end
 function common:get_trigger_characters() return { '#' } end
 function common:complete(params, callback)
     local buf = params.context.bufnr

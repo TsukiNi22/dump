@@ -40,3 +40,12 @@ vim.opt.shortmess:append 'c'                                                -- D
 vim.opt.iskeyword:append '-'                                                -- Hyphenated words recognized by searches (default: does not include '-')
 vim.opt.formatoptions:remove { 'c', 'r', 'o' }                              -- Don't insert the current comment leader automatically for auto-wrapping comments using 'textwidth', hitting <Enter> in insert mode, or hitting 'o' or 'O' in normal mode. (default: 'croql')
 vim.opt.runtimepath:remove '/usr/share/vim/vimfiles'                        -- Separate Vim plugins from Neovim in case Vim still in use (default: includes this path if Vim is installed)
+
+-- Speed
+vim.o.ttimeoutlen = 10                                                      -- Wait for the end of a key code (Esc latency) (default: 50)
+vim.o.updatetime = 250                                                      -- Idle time before the swap / CursorHold events (default: 4000)
+vim.o.synmaxcol = 300                                                       -- Do not color the end of very long lines (default: 3000)
+vim.g.loaded_python3_provider = 0                                           -- No provider looked for at start
+vim.g.loaded_node_provider = 0
+vim.g.loaded_perl_provider = 0
+vim.g.loaded_ruby_provider = 0

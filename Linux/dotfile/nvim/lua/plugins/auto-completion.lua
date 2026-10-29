@@ -141,7 +141,11 @@ return {
                 cmd = function(dispatchers, config)
                     local root = config.root_dir or vim.fn.getcwd()
                     local project = require('matching.project')
-                    local command = { 'clangd', '--background-index', '--header-insertion=never' }
+                    local command = {
+                        'clangd', '--background-index', '--background-index-priority=low', '--header-insertion=never',
+                        '--pch-storage=memory', '--clang-tidy=false', '--limit-results=100', '--malloc-trim',
+                        '-j=' .. math.max(2, math.floor((vim.uv.available_parallelism() or 4) / 2)),
+                    }
                     local env
                     local db = project.compile_db(root .. '/x')
                     if db then
