@@ -77,6 +77,17 @@ return {
                 },
             })
 
+            -- Nothing to propose when the only choices are the word already typed, exactly
+            cmp.event:on('menu_opened', function()
+                local entries = cmp.get_entries()
+                local typed = vim.api.nvim_get_current_line():sub(1, vim.api.nvim_win_get_cursor(0)[2]):match('[%w_]*$')
+                if typed == '' or #entries == 0 then return end
+                for _, entry in ipairs(entries) do
+                    if entry:get_word() ~= typed then return end
+                end
+                vim.schedule(cmp.close)
+            end)
+
             -- Use cmp for `/`, `?` and `:` command-line completions
             cmp.setup.cmdline({ '/', '?' }, {
                 mapping = cmp.mapping.preset.cmdline(),

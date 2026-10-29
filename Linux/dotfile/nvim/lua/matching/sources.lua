@@ -37,7 +37,7 @@ end
 local function near(typed, word) return near_lower(typed:lower(), word:lower()) end
 
 -- Items near the typed word, whatever the cmp matcher thinks (filterText = typed), ranked by c2dmp-hsm afterwards
-local function reply(callback, items, typed, excluded)
+local function reply(callback, items, typed, skip)
     local result = {}
     local lower_typed = typed:lower()
     local filter = typed ~= '' and typed or nil
@@ -47,7 +47,7 @@ local function reply(callback, items, typed, excluded)
             lower = (item.match or item.label):lower()
             item.lower = lower -- Computed once per item, not at each key
         end
-        if item.label ~= excluded and near_lower(lower_typed, lower) then -- excluded: the word being typed itself
+        if not (skip and skip(item)) and near_lower(lower_typed, lower) then -- skip(item): not offered
             item.filterText = filter -- The items are shared between the requests (no copy): set again at each one
             table.insert(result, item)
         end
@@ -350,7 +350,7 @@ function symbols:complete(params, callback)
             if item.label ~= typed then table.insert(items, item) end
         end
     end
-    reply(callback, items, typed, typed)
+    reply(callback, items, typed) -- The exact word is offered too (the menu is closed when it is the only choice)
 end
 
 --------------------------------------------------------------------------------
@@ -454,9 +454,13 @@ function words:complete(params, callback)
         local list, seen = {}, {}
         for _, line in ipairs(vim.api.nvim_buf_get_lines(buf, 0, 20000, false)) do
             for word in line:gmatch('[%w_]+') do
-                if #word > 2 and not seen[word] then
-                    seen[word] = true
-                    table.insert(list, { label = word, kind = kinds.Text })
+                if #word > 2 then
+                    if seen[word] then
+                        seen[word].count = seen[word].count + 1
+                    else
+                        seen[word] = { label = word, kind = kinds.Text, count = 1 }
+                        table.insert(list, seen[word])
+                    end
                 end
             end
         end
@@ -473,7 +477,11 @@ function words:complete(params, callback)
         end
         return list
     end)
-    reply(callback, items, typed, typed)
+    -- The word being typed is in the file (once, at the cursor) and so are the beginnings typed before it ('_mo' for
+    -- '_mono'): only a word written elsewhere too is offered
+    reply(callback, items, typed, function(item)
+        return item.count < 2 and #item.label <= #typed and typed:sub(1, #item.label) == item.label
+    end)
 end
 
 --------------------------------------------------------------------------------
