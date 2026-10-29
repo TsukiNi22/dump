@@ -12,7 +12,12 @@ WAYLAND_LOCAL_DIR="$USER_HOME/personal_delivery/other/wayland-desktop" # Clone o
 WAYLAND_MANAGED_DIR="$USER_HOME/.local/share/wayland-desktop"
 HYPRLAND_COPR="sdegler/hyprland" # Fedora: hyprland, hyprlock (not in the Fedora repositories)
 PACKAGES=(hyprland hyprlock waybar wofi kitty swaybg mako grim slurp wl-clipboard brightnessctl playerctl wireplumber
-    libnotify nautilus adwaita-cursor-theme jetbrains-mono-fonts-all fontawesome-6-free-fonts google-noto-sans-cjk-fonts)
+    libnotify nautilus adwaita-cursor-theme jetbrains-mono-fonts-all fontawesome-6-free-fonts google-noto-sans-cjk-fonts
+    adwaita-sans-fonts google-noto-serif-vf-fonts google-noto-sans-symbols-2-fonts btop
+    quickshell cava python3-gobject python3-cairo webkit2gtk4.1 gtk-layer-shell)
+# fonts of the styles (Adwaita Sans, Noto Serif, the symbols), btop: monitor of the bar, quickshell: GNOME-like overview
+# (else the wofi launcher), cava: music bars, python GTK / WebKit / gtk-layer-shell: live wallpapers (else the still
+# image); a family without one of them skips it
 CONFIG_DIR=""
 
 # =========================
@@ -81,6 +86,6 @@ fi
 run_step "SETUP-WAYLAND-SOURCE" "wayland-desktop configs" setup_source || exit 1
 run_step "SETUP-WAYLAND-CONFIG" "Config: $CHOICE" setup_configs "$MODE" || status=1
 if [[ "$MODE" != "remove" && "$status" -eq 0 ]]; then
-    info "Log out and choose Hyprland at the login screen (Super+Shift+W: style menu)"
+    info "Log out and choose Hyprland at the login screen (Super: overview, Super+Shift+W: style menu)"
 fi
 exit "$status"
