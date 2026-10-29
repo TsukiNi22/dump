@@ -5,9 +5,7 @@ local M = {}
 local markers = { '.git', 'compile_commands.json', 'CMakeLists.txt', 'Makefile', 'meson.build', 'Cargo.toml' }
 local sub_dirs = { '', 'include', 'includes', 'inc', 'src', 'source', 'sources', 'headers', 'lib' }
 local build_dirs = { '.', 'build', 'Build', 'build-debug', 'build-release', 'cmake-build-debug', 'cmake-build-release', 'out', '.build', 'bin' }
-local skipped = { ['.git'] = true, node_modules = true, build = true, out = true, ['.cache'] = true, ['.build'] = true }
 
-local search_cache = {} -- root .. include -> { dir, time }
 local db_cache = {}     -- compile_commands.json -> { mtime, flags, by_file }
 
 local function is_file(path)
@@ -112,7 +110,18 @@ local function load_db(path)
 end
 
 -- compile_commands.json of the project (in the root or in the usual build folders, also above the file)
+local db_path_cache = {} -- folder of the file -> { time, path | false }
+
 function M.compile_db(file)
+    local folder = vim.fs.dirname(file)
+    local cached = db_path_cache[folder]
+    if cached and os.time() - cached.time < 5 then return cached.path or nil end
+    local path = M.find_compile_db(file)
+    db_path_cache[folder] = { time = os.time(), path = path or false }
+    return path
+end
+
+function M.find_compile_db(file)
     local roots = ancestors(file)
     for _, root in ipairs(roots) do
         for _, build in ipairs(build_dirs) do
@@ -154,21 +163,59 @@ local function guessed_dirs(file)
     return dirs
 end
 
--- Folder to give to -I so that `#include "<include>"` is found, searched in the whole project
+-- Headers of the project, listed once in the background (rg, else git, else find): basename -> paths. A lookup never
+-- waits for it: before the list is ready nothing is found, and `on_index` tells when to check again
+local indexes = {} -- root -> { map, time, building }
+local listeners = {}
+
+function M.on_index(callback) table.insert(listeners, callback) end
+
+local function index_command(root)
+    local globs = '*.{h,hpp,hh,hxx,H,tpp,ipp,inc}'
+    if vim.fn.executable('rg') == 1 then return { 'rg', '--files', '--no-messages', '-g', globs, root } end
+    if vim.uv.fs_stat(root .. '/.git') and vim.fn.executable('git') == 1 then
+        return { 'git', '-C', root, 'ls-files', '--cached', '--others', '--exclude-standard', '*.h', '*.hpp', '*.hh', '*.hxx', '*.tpp', '*.ipp' }
+    end
+    return { 'find', root, '(', '-name', '.git', '-o', '-name', 'node_modules', '-o', '-name', 'build', ')', '-prune', '-o',
+        '-type', 'f', '(', '-name', '*.h', '-o', '-name', '*.hpp', '-o', '-name', '*.hh', '-o', '-name', '*.hxx', ')', '-print' }
+end
+
+local function build_index(root)
+    local index = indexes[root] or { map = {}, time = 0 }
+    indexes[root] = index
+    if index.building then return end
+    index.building = true
+    vim.system(index_command(root), { text = true }, function(result)
+        vim.schedule(function()
+            local map = {}
+            for path in (result.stdout or ''):gmatch('[^\n]+') do
+                if path:sub(1, 1) ~= '/' then path = root .. '/' .. path end
+                if not path:find('/build[^/]*/') and not path:find('/%.[^/]+/') then -- No build / hidden folders
+                    local name = path:match('[^/]+$')
+                    map[name] = map[name] or {}
+                    table.insert(map[name], path)
+                end
+            end
+            index.map, index.time, index.building, index.ready = map, os.time(), nil, true
+            for _, callback in ipairs(listeners) do callback() end
+        end)
+    end)
+end
+
+function M.prepare(file) -- At the opening of a file: the list is ready before the first check
+    local root = M.root(file)
+    if not indexes[root] then build_index(root) end
+end
+
+-- Folder to give to -I so that `#include "<include>"` is found
 local function search_include(root, include)
-    local key = root .. '\0' .. include
-    local cached = search_cache[key]
-    if cached and (cached.dir or os.time() - cached.time < 10) then return cached.dir end -- A miss is searched again later
+    local index = indexes[root]
+    if not index then build_index(root) return end
     local name = include:match('[^/]+$')
-    local found = vim.fs.find(function(candidate, dir)
-        return candidate == name and (dir .. '/' .. candidate):sub(-#include - 1) == '/' .. include
-    end, {
-        path = root, type = 'file', limit = 1,
-        skip = function(dir) return not skipped[dir] end, -- false: the folder is not entered
-    })[1]
-    local dir = found and found:sub(1, #found - #include - 1) or nil
-    search_cache[key] = { dir = dir, time = os.time() }
-    return dir
+    for _, path in ipairs(index.map[name] or {}) do
+        if path:sub(-#include - 1) == '/' .. include then return path:sub(1, #path - #include - 1) end
+    end
+    if not index.building and os.time() - index.time > 20 then build_index(root) end -- A new header may exist now
 end
 
 -- Folder where the file of an #include is found, nil when it is not in the project
@@ -196,7 +243,12 @@ function M.dirs(file, includes)
 end
 
 -- Compiler options of the file: the ones of the compile database, else the folders found
+local options_cache = {} -- key -> { time, options }
+
 function M.options(file, includes, cpp)
+    local key = file .. '\0' .. table.concat(includes or {}, '\0') .. (cpp and 'c' or '')
+    local cached = options_cache[key]
+    if cached and os.time() - cached.time < 3 then return cached.options end -- Called at each check: not recomputed each time
     local options = {}
     local flags = db_flags(file)
     local has_std = false
@@ -206,6 +258,7 @@ function M.options(file, includes, cpp)
     vim.list_extend(options, flags)
     for _, dir in ipairs(M.dirs(file, includes)) do vim.list_extend(options, { '-I', dir }) end
     if cpp and not has_std then table.insert(options, '-std=c++20') end
+    options_cache[key] = { time = os.time(), options = options }
     return options
 end
 

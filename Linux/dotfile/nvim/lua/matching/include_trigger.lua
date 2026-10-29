@@ -39,13 +39,18 @@ function M.setup()
         end,
     })
 
-    require('cmp').event:on('confirm_done', function(event)
-        local label = event.entry and event.entry.completion_item and event.entry.completion_item.label or ''
-        vim.schedule(function()
-            if event.entry.source.name ~= 'include' then return end
-            if label:sub(-1) == '/' then dismissed = nil; open() else M.dismiss() end -- A folder: its content follows
-        end)
-    end)
+    vim.api.nvim_create_autocmd('InsertEnter', { -- cmp is loaded by then
+        group = group, once = true,
+        callback = function()
+            require('cmp').event:on('confirm_done', function(event)
+                local label = event.entry and event.entry.completion_item and event.entry.completion_item.label or ''
+                vim.schedule(function()
+                    if event.entry.source.name ~= 'include' then return end
+                    if label:sub(-1) == '/' then dismissed = nil; open() else M.dismiss() end -- A folder: its content follows
+                end)
+            end)
+        end,
+    })
 end
 
 return M

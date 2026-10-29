@@ -183,6 +183,7 @@ function M.prewarm(buf)
     local filetype = vim.bo[buf].filetype
     if (filetype ~= 'c' and filetype ~= 'cpp') or vim.api.nvim_buf_get_name(buf) == '' then return end
     if vim.fn.executable(filetype == 'c' and 'clang' or 'clang++') ~= 1 then return end
+    project.prepare(vim.api.nvim_buf_get_name(buf)) -- List of the headers of the project, in the background
     local plan = plan_of(buf, filetype)
     if plan.includes > 0 then build_pch(plan) end
 end
@@ -279,6 +280,15 @@ end
 
 function M.setup()
     vim.diagnostic.enable(false)
+    project.on_index(function() -- The headers of the project are listed: the includes that were not found are checked again
+        if not M.enabled then return end
+        for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+            if vim.api.nvim_buf_is_loaded(buf) then
+                failed = {}
+                M.run(buf, true)
+            end
+        end
+    end)
     vim.diagnostic.config({
         virtual_text = { prefix = '●', spacing = 2 },
         underline = true,

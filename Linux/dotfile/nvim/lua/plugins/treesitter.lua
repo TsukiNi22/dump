@@ -5,10 +5,12 @@ return {
     build = ":TSUpdate",
     config = function()
         -- Needs tree-sitter-cli + a C compiler (async, done once)
-        require("nvim-treesitter").install({
-            "c", "cpp", "python", "lua", "bash",
-            "markdown", "make", "cmake", "json", "yaml",
-        })
+        vim.defer_fn(function() -- After the start: checking the parsers is not needed to display the first file
+            require("nvim-treesitter").install({
+                "c", "cpp", "python", "lua", "bash",
+                "markdown", "make", "cmake", "json", "yaml",
+            })
+        end, 1000)
         vim.api.nvim_create_autocmd("FileType", {
             pattern = { "c", "cpp", "python", "lua", "bash", "sh", "markdown", "make", "cmake", "json", "yaml" },
             callback = function(args)

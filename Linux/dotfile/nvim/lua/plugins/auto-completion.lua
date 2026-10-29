@@ -1,7 +1,7 @@
 return {
     {
         'hrsh7th/nvim-cmp',
-        lazy = false, -- Loaded at start: the completion of ':' and '/' works from the first use
+        event = { 'InsertEnter', 'CmdlineEnter' }, -- Not at start: the first insert / ':' / '/' loads it
         dependencies = {
             'hrsh7th/cmp-nvim-lsp',
             'hrsh7th/cmp-buffer',
@@ -15,7 +15,7 @@ return {
             local luasnip = require('luasnip')
 
             -- Load friendly snippets
-            require("luasnip.loaders.from_vscode").lazy_load()
+            vim.schedule(function() require("luasnip.loaders.from_vscode").lazy_load() end) -- After the first draw
 
             require('matching.sources').register()
 
@@ -91,6 +91,7 @@ return {
     },
     {
         'neovim/nvim-lspconfig', -- Required for LSP
+        ft = { 'c', 'cpp', 'lua' }, -- Only when such a file is opened
         config = function()
             local capabilities = require('cmp_nvim_lsp').default_capabilities()
 

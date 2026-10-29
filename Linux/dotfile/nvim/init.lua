@@ -1,3 +1,5 @@
+vim.loader.enable() -- Bytecode cache of the lua files: faster start
+
 require 'basics.options'
 require 'basics.keymaps' -- Sets the leader key (before lazy)
 require 'basics.autocmds'
@@ -27,10 +29,14 @@ require('lazy').setup({
     --require 'plugins.neotree', -- Replaced by tree/ (Ctrl+T)
     --require 'plugins.header',
     require 'plugins.treesitter',
+}, {
+    rtp = { disabled_plugins = { 'gzip', 'tarPlugin', 'tohtml', 'tutor', 'zipPlugin', 'rplugin', 'spellfile', 'netrwPlugin' } },
+    change_detection = { enabled = false }, -- No file watcher
+    checker = { enabled = false },
 })
 
 -- Completion helpers, help under the mouse, warnings & errors (need cmp, loaded above)
-require('matching.include_trigger').setup()
+require('matching.include_trigger').setup() -- cmp is only loaded at the first insert / command line
 require('matching.hover').setup()
 require('matching.checks').setup()
 
