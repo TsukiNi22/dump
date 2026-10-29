@@ -1,6 +1,6 @@
 # Dump Script for Linux
 
-### Script to automatically set Pam Usb / Usb Lock & Power Shutdown / Screen Of Intruder / Dotfile / Package & App / Custom Package & Binary / AI / N8n / Git / Grub & Plymouth
+### Script to automatically set Pam Usb / Usb Lock & Power Shutdown / Screen Of Intruder / Dotfile / Package & App / Custom Package & Binary / AI / N8n / Git / Grub & Plymouth / Wayland
 
 ![Loading screen](docs/img/loading.png)
 
@@ -93,6 +93,26 @@ Git user config, `~/delivery` & `~/personal_delivery`, `~/.ssh/git` key, then cl
 > The Pam Usb setup requires a main usb key (password AND one of the main usbs) in the auth stack: a marked block at the start of
 > `/etc/pam.d/system-auth` (+ `password-auth` on fedora-like, rebuilt by `authselect` first) or a `pam-auth-update`
 > profile on debian-like. It is only enabled when `pam_usb.so` is installed with all its libraries.
+
+### Wayland
+[Hyprland](https://hypr.land) and the configs of the [wayland-desktop](https://github.com/TsukiNi22/wayland-desktop)
+repository (`install.sh` of its `main` branch), chosen when the setup starts:
+
+| Choice | Content |
+| ------ | ------- |
+| `Wayland` | every style + a switcher in the top bar (click: menu, scroll: next / previous, `Super+Shift+W`) |
+| `System`, `Dev / low level`, `Ado / blue rose`, `Terminal / better-tty`, `Miku`, `Photographer` | one style alone |
+| `Remove the config` | remove the configs, the saved files are put back |
+
+| Family | Hyprland & hyprlock |
+| ------ | ------------------- |
+| fedora-like | copr `sdegler/hyprland` (not in the Fedora repositories) |
+| debian-like | repositories of the distribution (Debian 13+, recent Ubuntu), skipped when missing |
+| arch-like | official repositories |
+
+> [!NOTE]
+> The other packages: `waybar`, `wofi`, `kitty`, `swaybg`, `mako`, `grim`, `slurp`, `wl-clipboard`, `brightnessctl`,
+> `playerctl`, JetBrains Mono, Font Awesome and Noto CJK fonts. Log out and choose Hyprland at the login screen.
 
 ## Get Information about usb id (`vendor-id` / `device-id`)
 
