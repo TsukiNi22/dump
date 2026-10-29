@@ -306,6 +306,8 @@ pkg_name() {
         deb:util-linux-user|deb:dnf-plugins-core|deb:CSFML|deb:udisks-devel|deb:dracut|deb:grub2-common) ;;
         deb:plymouth-scripts|deb:plymouth-plugin-script) ;;
         deb:libnotify) echo "libnotify-bin" ;;
+        deb:mako) echo "mako-notifier" ;;
+        deb:adwaita-cursor-theme) echo "adwaita-icon-theme" ;;
         deb:jetbrains-mono-fonts-all) echo "fonts-jetbrains-mono" ;;
         deb:fontawesome-6-free-fonts) echo "fonts-font-awesome" ;;
         deb:google-noto-sans-cjk-fonts) echo "fonts-noto-cjk" ;;
@@ -334,6 +336,7 @@ pkg_name() {
         arch:grub2-common|arch:plymouth-scripts|arch:plymouth-plugin-script|arch:plymouth-system-theme) ;;
         arch:asciiquarium) ;; # AUR only
         arch:jetbrains-mono-fonts-all) echo "ttf-jetbrains-mono" ;;
+        arch:adwaita-cursor-theme) echo "adwaita-cursors" ;;
         arch:fontawesome-6-free-fonts) echo "ttf-font-awesome" ;;
         arch:google-noto-sans-cjk-fonts) echo "noto-fonts-cjk" ;;
         *) echo "$1" ;;

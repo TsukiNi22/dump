@@ -155,7 +155,7 @@ format() {
             title "Wayland"
             echo "Hyprland + the configs of github.com/TsukiNi22/wayland-desktop (styles inspired by its POCs):"
             echo "  - packages: hyprland, hyprlock, waybar, wofi, kitty, swaybg, mako, grim, slurp, wl-clipboard,"
-            echo "    brightnessctl, playerctl, fonts (fedora: copr sdegler/hyprland for hyprland & hyprlock)"
+            echo "    brightnessctl, playerctl, nautilus, adwaita cursor, fonts (fedora: copr sdegler/hyprland for hyprland & hyprlock)"
             echo "  - choose the config:"
             echo "      Wayland: every style + a switcher in the top bar (click: menu, scroll: next)"
             echo "      or one style alone: System, Dev / low level, Ado / blue rose, Terminal / better-tty, Miku, Photographer"

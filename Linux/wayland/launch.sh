@@ -12,7 +12,7 @@ WAYLAND_LOCAL_DIR="$USER_HOME/personal_delivery/other/wayland-desktop" # Clone o
 WAYLAND_MANAGED_DIR="$USER_HOME/.local/share/wayland-desktop"
 HYPRLAND_COPR="sdegler/hyprland" # Fedora: hyprland, hyprlock (not in the Fedora repositories)
 PACKAGES=(hyprland hyprlock waybar wofi kitty swaybg mako grim slurp wl-clipboard brightnessctl playerctl wireplumber
-    libnotify jetbrains-mono-fonts-all fontawesome-6-free-fonts google-noto-sans-cjk-fonts)
+    libnotify nautilus adwaita-cursor-theme jetbrains-mono-fonts-all fontawesome-6-free-fonts google-noto-sans-cjk-fonts)
 CONFIG_DIR=""
 
 # =========================
