@@ -15,7 +15,9 @@ end
 
 local function open()
     local cmp = require('cmp')
-    if cmp.visible() or dismissed == row() or not in_include() then return end
+    -- cmp.visible() waits for the work of cmp to end (a blocking loop that does not read the keys): asked last, and only on
+    -- an #include line
+    if dismissed == row() or not in_include() or cmp.core.view:visible() then return end
     cmp.complete({ config = { sources = { { name = 'include' } } } })
 end
 

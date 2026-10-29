@@ -79,6 +79,10 @@ return {
                 },
             })
 
+            -- cmp.visible(), cmp.complete()... wait up to 1 s (vim.wait) for the filtering of the menu to end before answering:
+            -- while it waits no key is read, that was the freeze. The answer is given at once with the state of the moment.
+            cmp.core.filter.sync = function() end
+
             -- Side of the menu: below the cursor when it fits, else above, else the side with the most room (the list is
             -- then shorter and scrolls). cmp only knows "can it fit below": the room is given to it through max_height
             local entries_view = require('cmp.view.custom_entries_view')
@@ -105,7 +109,7 @@ return {
             docs_view.open = function(self, e, view)
                 docs_timer:stop()
                 docs_timer:start(90, 0, vim.schedule_wrap(function()
-                    if cmp.visible() then open_docs(self, e, view) end
+                    if cmp.core.view:visible() then open_docs(self, e, view) end -- Not cmp.visible(): it blocks
                 end))
             end
 

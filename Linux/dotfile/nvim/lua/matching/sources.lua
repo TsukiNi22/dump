@@ -37,22 +37,38 @@ end
 local function near(typed, word) return near_lower(typed:lower(), word:lower()) end
 
 -- Items near the typed word, whatever the cmp matcher thinks (filterText = typed), ranked by c2dmp-hsm afterwards
+local threaded = require('matching.threaded')
+
 local function reply(callback, items, typed, skip)
-    local result = {}
     local lower_typed = typed:lower()
     local filter = typed ~= '' and typed or nil
     for _, item in ipairs(items) do
-        local lower = item.lower
-        if not lower then
-            lower = (item.match or item.label):lower()
-            item.lower = lower -- Computed once per item, not at each key
-        end
-        if not (skip and skip(item)) and near_lower(lower_typed, lower) then -- skip(item): not offered
-            item.filterText = filter -- The items are shared between the requests (no copy): set again at each one
-            table.insert(result, item)
-        end
+        if not item.lower then item.lower = (item.match or item.label):lower() end -- Computed once per item, not at each key
     end
-    callback({ items = result, isIncomplete = true }) -- Asked again at every key
+
+    local function answer(indexes)
+        local result = {}
+        for _, index in ipairs(indexes) do
+            local item = items[index]
+            if not (skip and skip(item)) then
+                item.filterText = filter -- The items are shared between the requests (no copy): set again at each one
+                table.insert(result, item)
+            end
+        end
+        callback({ items = result, isIncomplete = true }) -- Asked again at every key
+    end
+
+    if threaded.available and c2dmp.available and #items >= threaded.threshold then
+        -- Long list: filtered in a thread, the answer comes when it is done (dropped if a newer key made it useless)
+        threaded.filter(items, lower_typed, max_distance, answer)
+        return
+    end
+
+    local indexes = {}
+    for index, item in ipairs(items) do
+        if near_lower(lower_typed, item.lower) then table.insert(indexes, index) end
+    end
+    answer(indexes)
 end
 
 local function typed_word(context)
@@ -457,22 +473,30 @@ function words:complete(params, callback)
     local buf = params.context.bufnr
     local tick = vim.api.nvim_buf_get_changedtick(buf)
     local cached = words_cache[buf]
-    if not cached or (cached.tick ~= tick and vim.uv.now() - cached.time > 400) then -- Not read again at each key
-        local list, seen = {}, {}
+    local function as_items(list)
+        local items = {}
+        for index, entry in ipairs(list) do items[index] = { label = entry[1], kind = kinds.Text, count = entry[2] } end
+        return items
+    end
+    if not cached then -- First time: read at once (the prewarm does it while nobody types)
+        local list = {}
         for _, line in ipairs(vim.api.nvim_buf_get_lines(buf, 0, 20000, false)) do
             for word in line:gmatch('[%w_]+') do
                 if #word > 2 then
-                    if seen[word] then
-                        seen[word].count = seen[word].count + 1
-                    else
-                        seen[word] = { label = word, kind = kinds.Text, count = 1 }
-                        table.insert(list, seen[word])
-                    end
+                    local entry = list[word]
+                    if entry then entry[2] = entry[2] + 1 else entry = { word, 1 }; list[word] = entry; table.insert(list, entry) end
                 end
             end
         end
-        cached = { tick = tick, list = list, time = vim.uv.now() }
+        cached = { tick = tick, list = as_items(list), time = vim.uv.now() }
         words_cache[buf] = cached
+    elseif cached.tick ~= tick and vim.uv.now() - cached.time > 400 then
+        -- The words are read again in a thread (the current list is used meanwhile), not at each key
+        local text = table.concat(vim.api.nvim_buf_get_lines(buf, 0, 20000, false), '\n')
+        threaded.scan(text, function(list)
+            words_cache[buf] = { tick = tick, list = as_items(list), time = vim.uv.now() }
+        end)
+        cached.time = vim.uv.now()
     end
 
     local typed = typed_word(params.context)
