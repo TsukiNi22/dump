@@ -99,6 +99,27 @@ return {
                 lua_ls = 'lua-language-server',
                 clangd = 'clangd',
             }
+            -- clangd: the compile database found (CMake, bear...) else the include / src folders above the file as flags
+            vim.lsp.config('clangd', {
+                cmd = function(dispatchers, config)
+                    local root = config.root_dir or vim.fn.getcwd()
+                    local project = require('matching.project')
+                    local command = { 'clangd', '--background-index', '--header-insertion=never' }
+                    local env
+                    local db = project.compile_db(root .. '/x')
+                    if db then
+                        table.insert(command, '--compile-commands-dir=' .. vim.fs.dirname(db))
+                    else
+                        local add = {}
+                        for _, dir in ipairs(project.dirs(root .. '/x')) do table.insert(add, '"-I' .. dir .. '"') end
+                        local home = vim.fn.stdpath('cache') .. '/clangd-' .. vim.fn.sha256(root):sub(1, 12)
+                        vim.fn.mkdir(home .. '/clangd', 'p')
+                        vim.fn.writefile({ 'CompileFlags:', '  Add: [' .. table.concat(add, ', ') .. ']' }, home .. '/clangd/config.yaml')
+                        env = { XDG_CONFIG_HOME = home }
+                    end
+                    return vim.lsp.rpc.start(command, dispatchers, { env = env })
+                end,
+            })
             for server, cmd in pairs(servers) do
                 if vim.fn.executable(cmd) == 1 then
                     vim.lsp.config(server, { capabilities = capabilities })

@@ -1,5 +1,6 @@
 -- Index of the symbols (functions, types, variables, members, macros) of the current C / C++ buffer and of its
 -- #include files, with their signature and the comment written above them (treesitter, no language server)
+local project = require('matching.project')
 local M = {}
 
 local kinds_with_body = {
@@ -222,8 +223,12 @@ function M.include_dirs(open, buf)
     local cwd = vim.fn.getcwd()
     local file_dir = buf and vim.fn.fnamemodify(vim.api.nvim_buf_get_name(buf), ':p:h') or vim.fn.expand('%:p:h')
     local dirs = {}
+    local project_dirs = project.options(vim.fn.fnamemodify(file_dir .. '/x', ':p'), {}, false)
     if open == '"' then vim.list_extend(dirs, { file_dir, cwd, cwd .. '/include', cwd .. '/src' })
     else vim.list_extend(dirs, { cwd .. '/include' }) end
+    for index = 2, #project_dirs, 2 do -- Folders of the compile database / the include, src... above the file
+        if project_dirs[index - 1]:match('^%-[Ii]') then table.insert(dirs, project_dirs[index]) end
+    end
     vim.list_extend(dirs, { '/usr/local/include', '/usr/include' })
     vim.list_extend(dirs, vim.fn.glob('/usr/include/c++/*', false, true)) -- C++ standard headers
     return dirs
@@ -234,6 +239,12 @@ local function resolve(include, buf)
         local path = dir .. '/' .. include.path
         local stat = vim.uv.fs_stat(path)
         if stat and stat.type == 'file' then return path, stat, dir:find('^/usr') ~= nil end
+    end
+    local file = buf and vim.api.nvim_buf_get_name(buf) or ''
+    local dir = file ~= '' and project.find_include(file, include.path) -- Not in the usual folders: searched in the project
+    if dir then
+        local path = dir .. '/' .. include.path
+        return path, vim.uv.fs_stat(path), false
     end
 end
 

@@ -1,6 +1,7 @@
 -- Warnings and errors without any language server (toggled by Ctrl+D)
 --   C / C++ : clang -fsyntax-only on the buffer (errors, warnings, #warning, #error, missing includes...)
 --   others  : syntax errors found by treesitter
+local project = require('matching.project')
 local M = {}
 
 local namespace = vim.api.nvim_create_namespace('checks')
@@ -56,14 +57,16 @@ local function clean_cache()
     end
 end
 
-local function options_of(buf, cpp)
-    local dir = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(buf), ':p:h')
+local function options_of(buf, cpp, includes)
+    local name = vim.api.nvim_buf_get_name(buf)
+    local dir = vim.fn.fnamemodify(name, ':p:h')
     local cwd = vim.fn.getcwd()
     local options = {
         '-fno-color-diagnostics', '-fno-caret-diagnostics', '-ferror-limit=30', '-Wall', '-Wextra',
         '-Wno-pragma-once-outside-header', '-I', dir, '-I', dir .. '/include', '-I', cwd, '-I', cwd .. '/include',
     }
-    if cpp then table.insert(options, '-std=c++20') end
+    -- Compile database (CMake, bear...) or, without it, the include / src folders above the file and the headers found
+    vim.list_extend(options, project.options(name, includes, cpp))
     return options
 end
 
@@ -85,16 +88,17 @@ end
 
 -- Lines of the buffer where only the #include lines (prefix) or everything else (body) are kept: same line numbers
 local function split_includes(buf)
-    local prefix, body, count = {}, {}, 0
+    local prefix, body, count, paths = {}, {}, 0, {}
     for index, line in ipairs(vim.api.nvim_buf_get_lines(buf, 0, -1, false)) do
         if line:match('^%s*#%s*include') then
             prefix[index], body[index] = line, ''
             count = count + 1
+            table.insert(paths, line:match('^%s*#%s*include%s*["<]([^">]+)[">]'))
         else
             prefix[index], body[index] = '', line
         end
     end
-    return table.concat(prefix, '\n') .. '\n', table.concat(body, '\n') .. '\n', count
+    return table.concat(prefix, '\n') .. '\n', table.concat(body, '\n') .. '\n', count, paths
 end
 
 -- Everything needed to check a buffer with clang, and its precompiled header
@@ -104,9 +108,10 @@ local function plan_of(buf, filetype)
     local cpp = filetype == 'cpp'
     local plan = {
         buf = buf, cpp = cpp, compiler = cpp and 'clang++' or 'clang',
-        language = (cpp and 'c++' or 'c') .. (header and '-header' or ''), options = options_of(buf, cpp),
+        language = (cpp and 'c++' or 'c') .. (header and '-header' or ''),
     }
-    plan.prefix, plan.body, plan.includes = split_includes(buf)
+    plan.prefix, plan.body, plan.includes, plan.paths = split_includes(buf)
+    plan.options = options_of(buf, cpp, plan.paths)
     plan.key = vim.fn.sha256(plan.compiler .. plan.language .. table.concat(plan.options, ' ') .. plan.prefix)
     plan.pch = cache_dir .. '/' .. plan.key .. '.pch'
     return plan
