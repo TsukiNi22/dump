@@ -305,6 +305,10 @@ pkg_name() {
         deb:plymouth-system-theme) echo "plymouth-themes" ;;
         deb:util-linux-user|deb:dnf-plugins-core|deb:CSFML|deb:udisks-devel|deb:dracut|deb:grub2-common) ;;
         deb:plymouth-scripts|deb:plymouth-plugin-script) ;;
+        deb:libnotify) echo "libnotify-bin" ;;
+        deb:jetbrains-mono-fonts-all) echo "fonts-jetbrains-mono" ;;
+        deb:fontawesome-6-free-fonts) echo "fonts-font-awesome" ;;
+        deb:google-noto-sans-cjk-fonts) echo "fonts-noto-cjk" ;;
         # arch-like
         arch:vim-enhanced) echo "vim" ;;
         arch:gcc-c++) echo "gcc" ;;
@@ -329,6 +333,9 @@ pkg_name() {
         arch:util-linux-user|arch:dnf-plugins-core|arch:CSFML-devel|arch:udisks-devel|arch:dracut) ;;
         arch:grub2-common|arch:plymouth-scripts|arch:plymouth-plugin-script|arch:plymouth-system-theme) ;;
         arch:asciiquarium) ;; # AUR only
+        arch:jetbrains-mono-fonts-all) echo "ttf-jetbrains-mono" ;;
+        arch:fontawesome-6-free-fonts) echo "ttf-font-awesome" ;;
+        arch:google-noto-sans-cjk-fonts) echo "noto-fonts-cjk" ;;
         *) echo "$1" ;;
     esac
 }

@@ -276,6 +276,7 @@ menu_entries() {
         "N8n" \
         "Git" \
         "Grub & Plymouth" \
+        "Wayland" \
         "Quit"
 }
 
@@ -312,6 +313,7 @@ entry_task() {
         "N8n") TASK_NAME="N8N"; TASK_CMD=(task_setup "$SCRIPT_DIR/n8n/launch.sh") ;;
         "Git") TASK_NAME="GIT"; TASK_CMD=(task_setup "$SCRIPT_DIR/git/launch.sh") ;;
         "Grub & Plymouth") TASK_NAME="GRUB-PLYMOUTH"; TASK_CMD=(task_setup "$SCRIPT_DIR/grub_plymouth/launch.sh") ;;
+        "Wayland") TASK_NAME="WAYLAND"; TASK_CMD=(task_setup "$SCRIPT_DIR/wayland/launch.sh") ;;
         *) return 1 ;;
     esac
 }

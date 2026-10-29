@@ -151,6 +151,18 @@ format() {
             echo "  - plymouth theme of grub_plymouth/plymouth_theme (loader_2)"
             echo "  - regenerate the initramfs (can take a while)"
             ;;
+        "Wayland")
+            title "Wayland"
+            echo "Hyprland + the configs of github.com/TsukiNi22/wayland-desktop (styles inspired by its POCs):"
+            echo "  - packages: hyprland, hyprlock, waybar, wofi, kitty, swaybg, mako, grim, slurp, wl-clipboard,"
+            echo "    brightnessctl, playerctl, fonts (fedora: copr sdegler/hyprland for hyprland & hyprlock)"
+            echo "  - choose the config:"
+            echo "      Wayland: every style + a switcher in the top bar (click: menu, scroll: next)"
+            echo "      or one style alone: System, Dev / low level, Ado / blue rose, Terminal / better-tty, Miku, Photographer"
+            echo "      or remove the config (the saved files are put back)"
+            echo "  - configs of the local clone (~/personal_delivery/other/wayland-desktop on main) or a managed clone"
+            note "The files already there are saved once (*.wd-backup); log out and choose Hyprland at the login screen"
+            ;;
         "Quit")
             title "Quit"
             echo "Leave the menu"
