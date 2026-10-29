@@ -77,6 +77,25 @@ return {
                 },
             })
 
+            -- Side of the menu: below the cursor when it fits, else above, else the side with the most room (the list is
+            -- then shorter and scrolls). cmp only knows "can it fit below": the room is given to it through max_height
+            local entries_view = require('cmp.view.custom_entries_view')
+            local open_view = entries_view.open
+            entries_view.open = function(self, offset, entries)
+                local config = require('cmp.config').get()
+                local row = require('cmp.utils.api').get_screen_cursor()[1]
+                local bottom = vim.o.lines - vim.o.cmdheight - (vim.o.laststatus > 0 and 1 or 0)
+                local below, above = bottom - row, row - 1
+                local want = math.min(#entries, vim.o.pumheight > 0 and vim.o.pumheight or 10)
+                local side = 'below'
+                if below < want then
+                    side = (above >= want or above > below) and 'above' or 'below'
+                end
+                config.view.entries.vertical_positioning = side
+                config.window.completion.max_height = math.max(1, math.min(want, side == 'below' and below or above))
+                return open_view(self, offset, entries)
+            end
+
             -- Nothing to propose when the only choices are the word already typed, exactly
             cmp.event:on('menu_opened', function()
                 local entries = cmp.get_entries()
