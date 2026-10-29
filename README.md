@@ -112,7 +112,7 @@ repository (`install.sh` of its `main` branch), chosen when the setup starts:
 
 > [!NOTE]
 > The other packages: `waybar`, `wofi`, `kitty`, `swaybg`, `mako`, `grim`, `slurp`, `wl-clipboard`, `brightnessctl`,
-> `playerctl`, JetBrains Mono, Font Awesome and Noto CJK fonts. Log out and choose Hyprland at the login screen.
+> `playerctl`, `nautilus`, the Adwaita cursor, JetBrains Mono, Font Awesome and Noto CJK fonts. Log out and choose Hyprland at the login screen.
 
 ## Get Information about usb id (`vendor-id` / `device-id`)
 
