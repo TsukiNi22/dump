@@ -36,12 +36,12 @@ format() {
             ;;
         "Pam Usb"*)
             title "Pam Usb"
-            echo "${YELLOW}Needs the main usb key${RESET} (not set: chosen when the setup starts, or deactivation only)"
+            echo "${YELLOW}Needs a main usb key${RESET} (not set: chosen when the setup starts, or deactivation only)"
             echo
             echo "Activate (main usb plugged):"
             echo "  - build pam_usb from github.com/mcdope/pam_usb"
-            echo "  - write /etc/security/pam_usb.conf (vendor, model, serial, volume uuid of the main usb)"
-            echo "  - password AND main usb required to log in / unlock / sudo:"
+            echo "  - write /etc/security/pam_usb.conf (vendor, model, serial, volume uuid of every plugged main usb: any of them unlocks)"
+            echo "  - password AND one main usb required (never a cancel usb) to log in / unlock / sudo:"
             echo "    fedora: marked block in system-auth & password-auth (rebuilt by authselect first)"
             echo "    debian: pam-auth-update profile, arch: marked block in system-auth"
             echo
@@ -51,25 +51,25 @@ format() {
             ;;
         "Usb Lock & Power Shutdown"*)
             title "Usb Lock & Power Shutdown"
-            echo "${YELLOW}Needs the main usb key${RESET} (not set: chosen when the setup starts, or deactivation only)"
+            echo "${YELLOW}Needs a main usb key${RESET} (not set: chosen when the setup starts, or deactivation only)"
             echo
             echo "Activation (main usb plugged), choose USB Lock, Power Shutdown or both:"
-            echo "  - USB Lock: udev rule, main usb removed -> lock the session + suspend"
+            echo "  - USB Lock: one udev rule per main usb, the last main usb removed -> lock the session + suspend"
             echo "  - Power Shutdown: udev rule, charger unplugged -> power off"
             echo "  - /usr/local/bin/usb-lock_power-shutdown.sh run by the rules"
-            echo "  - cancel usb (optional): plugged -> the lock / shutdown don't happen"
+            echo "  - cancel usbs (optional): one plugged -> the lock / shutdown don't happen"
             echo
             echo "Deactivation (always possible, one of them or both):"
             echo "  - remove the rule(s), the script when no rule is left, reload udev"
             ;;
         "Screen Of Intruder"*)
             title "Screen Of Intruder"
-            echo "${YELLOW}Needs the main usb key${RESET} (not set: chosen when the setup starts, or deactivation only)"
+            echo "${YELLOW}Needs a main usb key${RESET} (not set: chosen when the setup starts, or deactivation only)"
             echo
             echo "Activate (main usb plugged):"
             echo "  - install fswebcam"
             echo "  - usb-capture.service (runs as the user) checks every second"
-            echo "  - screen locked AND main usb unplugged -> webcam picture in"
+            echo "  - screen locked AND no main usb plugged (nor cancel usb) -> webcam picture in"
             echo "    ~/Images/Intruder_Picture/intruder_<date>.jpg"
             echo "  - max number of pictures kept (asked, 0 = unlimited): the oldest ones are deleted"
             echo
@@ -78,9 +78,10 @@ format() {
             ;;
         "Usb Keys"*)
             title "Usb Keys"
-            echo "Optional: choose the usb used by the 3 usb setups (from lsusb or written by hand):"
-            echo "  - main: Pam Usb, Usb Lock & Power Shutdown, Screen Of Intruder"
-            echo "  - cancel (optional): cancels the Usb Lock & Power Shutdown"
+            echo "Optional: choose the usbs used by the 3 usb setups, as many as you want (from lsusb or written by hand):"
+            echo "  - main keys (security): Pam Usb, Usb Lock & Power Shutdown, Screen Of Intruder"
+            echo "  - cancel keys (optional): cancel the Usb Lock & Power Shutdown and the Screen Of Intruder"
+            note "A key is either a main key or a cancel key, never both (refused)"
             note "Not set: the usb setups propose to choose it when they start (or deactivation only)"
             ;;
         "Dotfile")
@@ -91,7 +92,7 @@ format() {
             echo "  - ~/.zshrc (old one saved in ~/.zshrc.bak), 'dump' alias -> this repository"
             echo "  - ~/.config/nvim: lazy.nvim, rose-pine, treesitter, nvim-cmp, headers & protos"
             echo "  - ~/.config/fastfetch: random picture at each launch (rdm_img.sh)"
-            echo "  - ~/.tmux.conf, ~/.config/git/ignore"
+            echo "  - ~/.tmux.conf + ~/.config/tmux/mode.sh (vi modes), ~/.config/git/ignore"
             ;;
         "Package & App")
             title "Package & App"
@@ -99,6 +100,9 @@ format() {
             echo
             echo "  - base: git, curl, wget, tree, ripgrep, gh, asciiquarium"
             echo "  - dev: gcc, clang, cmake, ccache, gtest, valgrind, python3, tmux"
+            echo "  - GPU drivers from the hardware (lspci): NVIDIA driver + CUDA, AMD mesa + ROCm, Intel media + vulkan"
+            echo "  - libs (lua, json, httplib, sodium, libconfig, ncurses, qt6), htop, nmap, rsync, glow, doxygen, llvm, perf"
+            echo "  - mingw64 cross compiler (fedora only)"
             echo "  - docker (moby-engine, docker-compose, docker group)"
             echo "  - CSFML, binwalk, gobuster, hydra, john, wireshark (wireshark group)"
             echo "  - apps: vscode, telegram, qbittorrent, vesktop & sober (flatpak)"
@@ -120,6 +124,13 @@ format() {
             echo "  - Skills: every skill in ~/.claude/skills + their tools (xstyle)"
             echo "  - Skills context: CLAUDE.md, RTK.md, hooks and rtk in ~/.claude"
             note "The skills come from the local clone of the Git setup, or a managed clone otherwise"
+            ;;
+        "N8n")
+            title "N8n"
+            echo "n8n workflow automation, http://localhost:5678 (local only, data in the volume n8n_data):"
+            echo "  - podman (rootless) + quadlet ~/.config/containers/systemd/n8n.container"
+            echo "  - systemd user service n8n.service (host network, restarts always, started at login)"
+            note "The image is pulled by the first start (can take a few minutes)"
             ;;
         "Git")
             title "Git"

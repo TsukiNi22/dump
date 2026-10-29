@@ -1,6 +1,6 @@
 # Dump Script for Linux
 
-### Script to automatically set Pam Usb / Usb Lock & Power Shutdown / Screen Of Intruder / Dotfile / Package & App / Custom Package & Binary / AI / Git / Grub & Plymouth
+### Script to automatically set Pam Usb / Usb Lock & Power Shutdown / Screen Of Intruder / Dotfile / Package & App / Custom Package & Binary / AI / N8n / Git / Grub & Plymouth
 
 ![Loading screen](docs/img/loading.png)
 
@@ -90,7 +90,7 @@ Git user config, `~/delivery` & `~/personal_delivery`, `~/.ssh/git` key, then cl
 | Other links (one per line) | Chosen folder (default: `~/personal_delivery`) |
 
 > [!CAUTION]
-> The Pam Usb setup requires the usb key (password AND usb) in the auth stack: a marked block at the start of
+> The Pam Usb setup requires a main usb key (password AND one of the main usbs) in the auth stack: a marked block at the start of
 > `/etc/pam.d/system-auth` (+ `password-auth` on fedora-like, rebuilt by `authselect` first) or a `pam-auth-update`
 > profile on debian-like. It is only enabled when `pam_usb.so` is installed with all its libraries.
 
@@ -110,8 +110,12 @@ For the `USB Disk 2.0` the `vendor-id` is `ffff` and the `device-id` is `5678`.
 
 | Usb | Used by |
 | --- | ------- |
-| main (`vendor-id` / `device-id`) | Pam Usb, Usb Lock & Power Shutdown, Screen Of Intruder |
-| cancel (`cancel-vendor-id` / `cancel-device-id`, optional) | Usb Lock & Power Shutdown: plugged -> the lock & shutdown are cancelled |
+| main keys (`vendor-id:device-id`, as many as wanted) | Pam Usb (any of them unlocks), Usb Lock & Power Shutdown (lock when the last one is removed), Screen Of Intruder (picture when none is plugged) |
+| cancel keys (optional, as many as wanted) | Usb Lock & Power Shutdown and Screen Of Intruder: one plugged -> nothing happens |
+
+> [!IMPORTANT]
+> A key is either a main key or a cancel key, never both: the selection refuses a key already used by the other role
+> and the setups refuse a state where a key is in both lists. A cancel key never unlocks the session (Pam Usb).
 
 > [!NOTE]
 > The usb keys are optional (`Usb Keys` in the menu). Without a plugged main usb, the 3 usb setups are marked
