@@ -51,6 +51,12 @@ return {
                         end
                     end, { "i", "s" }),
                 }),
+                performance = {
+                    debounce = 40,         -- ms without key before the menu is refreshed (default 60)
+                    throttle = 20,
+                    fetching_timeout = 150, -- A slow source is left behind instead of blocking the menu
+                    max_view_entries = 40,
+                },
                 formatting = {
                     fields = { 'abbr', 'kind', 'menu' },
                     format = require('matching.sources').format, -- Tag of the source: [kw] [inc] [sym] [file]...
@@ -63,11 +69,11 @@ return {
                     { name = 'include' },   -- #include "..." / <...>
                     { name = 'keywords' },  -- Keywords and #directives
                     { name = 'common' },    -- [std] main, control structures, usual includes and calls
-                    { name = 'symbols', dup = 0 }, -- Functions, types, variables of the file and of its includes
+                    { name = 'symbols', dup = 0, max_item_count = 300 }, -- Functions, types, variables of the file and of its includes
                     { name = 'members' },   -- After '.', '->' and '::'
-                    { name = 'luasnip' },
+                    { name = 'luasnip', max_item_count = 20 },
                     { name = 'path' },
-                    { name = 'words', dup = 0 },   -- Words of the file, after all the others
+                    { name = 'words', dup = 0, max_item_count = 200 },   -- Words of the file, after all the others
                 },
             })
 

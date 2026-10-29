@@ -227,7 +227,9 @@ function M.include_dirs(open, buf)
     if open == '"' then vim.list_extend(dirs, { file_dir, cwd, cwd .. '/include', cwd .. '/src' })
     else vim.list_extend(dirs, { cwd .. '/include' }) end
     for index = 2, #project_dirs, 2 do -- Folders of the compile database / the include, src... above the file
-        if project_dirs[index - 1]:match('^%-[Ii]') then table.insert(dirs, project_dirs[index]) end
+        local dir = project_dirs[index]
+        -- <...>: only the include folders, not every folder above the file
+        if project_dirs[index - 1]:match('^%-[Ii]') and (open == '"' or dir:match('/inc[a-z]*$')) then table.insert(dirs, dir) end
     end
     vim.list_extend(dirs, { '/usr/local/include', '/usr/include' })
     vim.list_extend(dirs, vim.fn.glob('/usr/include/c++/*', false, true)) -- C++ standard headers
@@ -272,42 +274,69 @@ end
 
 function M.supported(buf) return language_of(buf or 0) ~= nil end
 
-function M.entries(buf)
-    buf = buf == 0 and vim.api.nvim_get_current_buf() or buf
-    local lang = language_of(buf)
-    if not lang then return {} end
+local follow_cache = {} -- buffer -> { sig, time, extra }: entries of the includes, resolved again only every few seconds
 
+local function rebuild(buf, lang)
     local tick = vim.api.nvim_buf_get_changedtick(buf)
-    local cached = buffer_cache[buf]
-    if cached and cached.tick == tick then return cached.all end
-
     local text = table.concat(vim.api.nvim_buf_get_lines(buf, 0, -1, false), '\n')
     local entries, includes = parse(text, lang)
     local name = vim.api.nvim_buf_get_name(buf)
     for _, entry in ipairs(entries) do entry.file = name end
 
-    local all = vim.list_extend({}, entries)
-    local visited, files = { [name] = true }, 0
-    local function follow(list, depth)
-        for _, include in ipairs(list) do
-            local path, stat, system = resolve(include, buf)
-            -- System headers: one level, small, and without their private names (_M_...)
-            if path and not visited[path] and stat.size < max_file_size and files < 40
-                and (not system or depth == 1) then
-                visited[path] = true
-                files = files + 1
-                local file = file_entries(path, stat, lang)
-                for _, entry in ipairs(file.entries) do
-                    if not (system and entry.name:sub(1, 1) == '_') then table.insert(all, entry) end
+    local signature = {}
+    for _, include in ipairs(includes) do table.insert(signature, include.open .. include.path) end
+    signature = table.concat(signature, '\n')
+
+    local cached = follow_cache[buf]
+    local extra
+    if cached and cached.signature == signature and os.time() - cached.time < 3 then
+        extra = cached.extra -- Same #include lines: no stat / read of the headers again
+    else
+        extra = {}
+        local visited, files = { [name] = true }, 0
+        local function follow(list, depth)
+            for _, include in ipairs(list) do
+                local path, stat, system = resolve(include, buf)
+                -- System headers: one level, small, and without their private names (_M_...)
+                if path and stat and not visited[path] and stat.size < max_file_size and files < 40
+                    and (not system or depth == 1) then
+                    visited[path] = true
+                    files = files + 1
+                    local file = file_entries(path, stat, lang)
+                    for _, entry in ipairs(file.entries) do
+                        if not (system and entry.name:sub(1, 1) == '_') then table.insert(extra, entry) end
+                    end
+                    if depth < 3 then follow(file.includes, depth + 1) end
                 end
-                if depth < 3 then follow(file.includes, depth + 1) end
             end
         end
+        follow(includes, 1)
+        follow_cache[buf] = { signature = signature, time = os.time(), extra = extra }
     end
-    follow(includes, 1)
 
+    local all = vim.list_extend({}, entries)
+    vim.list_extend(all, extra)
     buffer_cache[buf] = { tick = tick, all = all }
     return all
+end
+
+-- The buffer is parsed again only once the typing pauses (the previous result is used meanwhile): no parse per key
+function M.entries(buf)
+    buf = buf == 0 and vim.api.nvim_get_current_buf() or buf
+    local lang = language_of(buf)
+    if not lang then return {} end
+
+    local cached = buffer_cache[buf]
+    if not cached then return rebuild(buf, lang) end
+    if cached.tick == vim.api.nvim_buf_get_changedtick(buf) then return cached.all end
+
+    if not cached.pending then
+        cached.pending = true
+        vim.defer_fn(function()
+            if vim.api.nvim_buf_is_valid(buf) then rebuild(buf, lang) end
+        end, 150)
+    end
+    return cached.all
 end
 
 -- Entry by name (functions, types, macros...) for the help under the mouse

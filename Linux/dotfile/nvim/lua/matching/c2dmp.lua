@@ -45,18 +45,30 @@ local function word_of(entry)
     return entry:get_word(), 0
 end
 
+-- Coverage and distance of an entry, computed once for the typed word (a sort asks them again for each comparison)
+local function scores(entry, typed)
+    local cached = entry.c2dmp_scores
+    if cached and cached.typed == typed then return cached end
+    local word, handicap = word_of(entry)
+    cached = { typed = typed, cover = coverage(typed, word), word = word, handicap = handicap }
+    entry.c2dmp_scores = cached
+    return cached
+end
+
+local function distance_of(scored)
+    if not scored.distance then scored.distance = M.distance(scored.typed, scored.word) + scored.handicap end
+    return scored.distance
+end
+
 -- nvim-cmp comparator: the candidate holding the most typed letters first, then the closest for c2dmp-hsm
 function M.comparator(entry1, entry2)
     local typed = typed_word(entry1)
     if typed == '' then return nil end
 
-    local word1, handicap1 = word_of(entry1)
-    local word2, handicap2 = word_of(entry2)
-    local cover1, cover2 = coverage(typed, word1), coverage(typed, word2)
-    if cover1 ~= cover2 then return cover1 > cover2 end
+    local scored1, scored2 = scores(entry1, typed), scores(entry2, typed)
+    if scored1.cover ~= scored2.cover then return scored1.cover > scored2.cover end
 
-    local dist1 = M.distance(typed, word1) + handicap1
-    local dist2 = M.distance(typed, word2) + handicap2
+    local dist1, dist2 = distance_of(scored1), distance_of(scored2)
     if dist1 == dist2 then return nil end
     return dist1 < dist2
 end

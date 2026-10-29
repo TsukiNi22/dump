@@ -14,7 +14,26 @@ return {
         vim.api.nvim_create_autocmd("FileType", {
             pattern = { "c", "cpp", "python", "lua", "bash", "sh", "markdown", "make", "cmake", "json", "yaml" },
             callback = function(args)
-                pcall(vim.treesitter.start, args.buf) -- Parser not installed yet -> default highlight
+                -- After the first draw: compiling the highlight query of C++ takes ~0.5 s the first time, the text must not wait for it
+                vim.defer_fn(function()
+                    if vim.api.nvim_buf_is_valid(args.buf) and vim.bo[args.buf].filetype ~= '' then
+                        pcall(vim.treesitter.start, args.buf) -- Parser not installed yet -> default highlight
+                    end
+                end, 10)
+            end,
+        })
+        -- Nothing opened at start: the queries of C / C++ are compiled while nobody types yet (the next file opens at once)
+        vim.api.nvim_create_autocmd('VimEnter', {
+            once = true,
+            callback = function()
+                if vim.fn.argc() > 0 then return end
+                vim.defer_fn(function()
+                    if vim.fn.mode() ~= 'n' then return end
+                    for _, lang in ipairs({ 'c', 'cpp' }) do
+                        pcall(vim.treesitter.language.add, lang)
+                        pcall(vim.treesitter.query.get, lang, 'highlights')
+                    end
+                end, 400)
             end,
         })
     end,

@@ -24,22 +24,32 @@ local function subsequence(typed, word)
     return true
 end
 
-local function near(typed, word)
-    if typed == '' then return true end
-    local lower_typed, lower_word = typed:lower(), word:lower()
+-- lower_typed: the typed word in lower case; lower_word: the word in lower case (kept on the item, computed once)
+local function near_lower(lower_typed, lower_word)
+    if lower_typed == '' then return true end
     if lower_word:find(lower_typed, 1, true) or subsequence(lower_typed, lower_word) then return true end
-    return c2dmp.available and #typed >= 4 and c2dmp.distance(lower_typed, lower_word) <= max_distance
+    -- c2dmp-hsm (inversions): only for words of a close length, the native call is not free
+    local length = #lower_word - #lower_typed
+    return c2dmp.available and #lower_typed >= 4 and length >= -2 and length <= 5
+        and c2dmp.distance(lower_typed, lower_word) <= max_distance
 end
 
+local function near(typed, word) return near_lower(typed:lower(), word:lower()) end
+
 -- Items near the typed word, whatever the cmp matcher thinks (filterText = typed), ranked by c2dmp-hsm afterwards
-local function reply(callback, items, typed)
+local function reply(callback, items, typed, excluded)
     local result = {}
+    local lower_typed = typed:lower()
+    local filter = typed ~= '' and typed or nil
     for _, item in ipairs(items) do
-        if near(typed, item.match or item.label) then
-            local copy = {}
-            for key, value in pairs(item) do copy[key] = value end
-            if typed ~= '' then copy.filterText = typed end
-            table.insert(result, copy)
+        local lower = item.lower
+        if not lower then
+            lower = (item.match or item.label):lower()
+            item.lower = lower -- Computed once per item, not at each key
+        end
+        if item.label ~= excluded and near_lower(lower_typed, lower) then -- excluded: the word being typed itself
+            item.filterText = filter -- The items are shared between the requests (no copy): set again at each one
+            table.insert(result, item)
         end
     end
     callback({ items = result, isIncomplete = true }) -- Asked again at every key
@@ -64,12 +74,27 @@ local entry_kinds = {
     member = kinds.Field, macro = kinds.Constant, constant = kinds.EnumMember, namespace = kinds.Module,
 }
 
+local item_cache = setmetatable({}, { __mode = 'k' }) -- entry -> item (the entries live as long as their file is unchanged)
+
 local function item_of(entry)
-    return {
-        label = entry.name,
-        kind = entry_kinds[entry.kind] or kinds.Text,
-        documentation = documentation(entry),
-    }
+    local item = item_cache[entry]
+    if not item then
+        item = {
+            label = entry.name,
+            kind = entry_kinds[entry.kind] or kinds.Text,
+            documentation = documentation(entry),
+        }
+        item_cache[entry] = item
+    end
+    return item
+end
+
+-- Result of build() kept on the list of entries (a new list each time the file is parsed again, the old one is collected)
+local function derive(name, all, build)
+    local store = rawget(all, 'derived')
+    if not store then store = {}; rawset(all, 'derived', store) end
+    if store[name] == nil then store[name] = build() end
+    return store[name]
 end
 
 --------------------------------------------------------------------------------
@@ -166,6 +191,7 @@ end
 -- Very common things ([std]): main, control structures, usual includes and calls (matching/common.lua)
 --------------------------------------------------------------------------------
 local common = {}
+local common_cache = {}
 function common:is_available() return #require('matching.common').items(vim.bo.filetype, 'top') > 0 end
 function common:get_trigger_characters() return { '#' } end
 function common:complete(params, callback)
@@ -192,28 +218,35 @@ function common:complete(params, callback)
         if is_c and bare and #bare >= 2 then table.insert(contexts, { 'line', bare }) end -- 'def' -> '#define'
     end
 
-    local items = {}
-    for _, reading in ipairs(contexts) do
-        for _, entry in ipairs(catalog.items(filetype, reading[1], file)) do
-            table.insert(items, {
-                label = entry.label, match = entry.match, strict = entry.strict, kind = kinds[entry.kind] or kinds.Snippet,
-                insertText = entry.snippet, insertTextFormat = 2, -- 2: snippet (the fields are jumped with Tab)
-                documentation = { kind = 'markdown', value = '**Common**\n\n' .. entry.doc },
-                data = { group = entry.group, rank = entry.rank, special = entry.special },
-                typed = reading[2],
-            })
-        end
-    end
-    -- Each reading filters with its own typed word
+    -- Each reading filters with its own typed word; the items of a reading are built once (the catalog is rebuilt
+    -- every 30 s: the date of the headers, the new files)
     local result = {}
-    for _, item in ipairs(items) do
-        -- A line that only holds a word ('def'): the exact letters only, so that '#define' does not appear for every word
-        local found = item.strict and (item.match or item.label):lower():find(item.typed:lower(), 1, true)
-            or (not item.strict and near(item.typed, item.match or item.label))
-        if found then
-            item.filterText = item.typed ~= '' and item.typed or nil
-            item.typed, item.strict = nil, nil
-            table.insert(result, item)
+    for _, reading in ipairs(contexts) do
+        local key = filetype .. '\0' .. reading[1] .. '\0' .. name
+        local cached = common_cache[key]
+        if not cached or os.time() - cached.time > 30 then
+            local items = {}
+            for _, entry in ipairs(catalog.items(filetype, reading[1], file)) do
+                table.insert(items, {
+                    label = entry.label, match = entry.match, strict = entry.strict, kind = kinds[entry.kind] or kinds.Snippet,
+                    insertText = entry.snippet, insertTextFormat = 2, -- 2: snippet (the fields are jumped with Tab)
+                    documentation = { kind = 'markdown', value = '**Common**\n\n' .. entry.doc },
+                    data = { group = entry.group, rank = entry.rank, special = entry.special },
+                    lower = (entry.match or entry.label):lower(),
+                })
+            end
+            cached = { time = os.time(), items = items }
+            common_cache[key] = cached
+        end
+        local typed = reading[2]
+        local lower_typed = typed:lower()
+        for _, item in ipairs(cached.items) do
+            -- A line that only holds a word ('def'): the exact letters only, so that '#define' does not appear for every word
+            local found = item.strict and item.lower:find(lower_typed, 1, true) or (not item.strict and near_lower(lower_typed, item.lower))
+            if found then
+                item.filterText = typed ~= '' and typed or nil
+                table.insert(result, item)
+            end
         end
     end
     callback({ items = result, isIncomplete = true })
@@ -267,7 +300,7 @@ local generic_cache = {}
 local function generic_symbols(buf)
     local tick = vim.api.nvim_buf_get_changedtick(buf)
     local cached = generic_cache[buf]
-    if cached and cached.tick == tick then return cached.items end
+    if cached and (cached.tick == tick or vim.uv.now() - cached.time < 400) then return cached.items end -- Not at each key
 
     local items = {}
     local ok, parser = pcall(vim.treesitter.get_parser, buf)
@@ -287,7 +320,7 @@ local function generic_symbols(buf)
             for child in node:iter_children() do table.insert(stack, child) end
         end
     end
-    generic_cache[buf] = { tick = tick, items = items }
+    generic_cache[buf] = { tick = tick, items = items, time = vim.uv.now() }
     return items
 end
 
@@ -300,20 +333,24 @@ function symbols:complete(params, callback)
 
     local items = {}
     if index.supported(buf) then
-        local seen = {}
-        for _, entry in ipairs(index.entries(buf)) do
-            local scoped = entry.owner and entry.kind ~= 'constant'
-            if not scoped and entry.name ~= typed and not seen[entry.name] then
-                seen[entry.name] = true
-                table.insert(items, item_of(entry))
+        local all = index.entries(buf)
+        items = derive('symbols', all, function()
+            local list, seen = {}, {}
+            for _, entry in ipairs(all) do
+                local scoped = entry.owner and entry.kind ~= 'constant'
+                if not scoped and not seen[entry.name] then
+                    seen[entry.name] = true
+                    table.insert(list, item_of(entry))
+                end
             end
-        end
+            return list
+        end)
     else
         for _, item in ipairs(generic_symbols(buf)) do
             if item.label ~= typed then table.insert(items, item) end
         end
     end
-    reply(callback, items, typed)
+    reply(callback, items, typed, typed)
 end
 
 --------------------------------------------------------------------------------
@@ -350,33 +387,41 @@ function members:complete(params, callback)
     elseif object then owner = type_of_variable(buf, object, params.context.cursor.line + 1)
     elseif not (before:match('%.[%w_]*$') or before:match('%->[%w_]*$')) then return callback({}) end
 
-    local items, seen = {}, {}
     local all = index.entries(buf)
-    local function collect(only_owner)
+    local groups = derive('members', all, function() -- Owned entries and entries of the namespaces, built once per parse
+        local owned, namespaced, seen = {}, {}, {}
         for _, entry in ipairs(all) do
             local key = (entry.owner or '') .. '::' .. entry.name
-            if entry.owner and (not only_owner or entry.owner == only_owner) and not seen[key] then
+            if entry.owner and not seen[key] then
                 seen[key] = true
-                table.insert(items, item_of(entry))
+                table.insert(owned, entry)
+            end
+            local ns_key = 'ns::' .. (entry.ns or '') .. '::' .. entry.name
+            if entry.ns and not entry.owner and not seen[ns_key] then
+                seen[ns_key] = true
+                table.insert(namespaced, entry)
             end
         end
+        return { owned = owned, namespaced = namespaced }
+    end)
+
+    local items = {}
+    for _, entry in ipairs(groups.owned) do
+        if entry.owner == owner then table.insert(items, item_of(entry)) end
     end
-    collect(owner)
 
     -- 'ns::' : what is declared in the namespace (functions, types, variables, nested namespaces)
     if scope then
-        for _, entry in ipairs(all) do
-            local key = 'ns::' .. entry.name
-            if entry.ns == scope and not entry.owner and not seen[key] then
-                seen[key] = true
-                table.insert(items, item_of(entry))
-            end
+        for _, entry in ipairs(groups.namespaced) do
+            if entry.ns == scope then table.insert(items, item_of(entry)) end
         end
         if scope == 'std' then
-            for word in std_words:gmatch('%S+') do table.insert(items, { label = word, kind = kinds.Class }) end
+            for _, item in ipairs(items_of('std_words', std_words, kinds.Class)) do table.insert(items, item) end
         end
     end
-    if #items == 0 and not scope then collect(nil) end -- Unknown type: every member we know
+    if #items == 0 and not scope then -- Unknown type: every member we know
+        for _, entry in ipairs(groups.owned) do table.insert(items, item_of(entry)) end
+    end
     reply(callback, items, typed)
 end
 
@@ -387,14 +432,17 @@ local words_cache = {}
 
 -- Names already offered by the other sources (keywords, symbols): not repeated as words of the file
 local function known_names(buf)
-    local known = {}
-    for word in (lists[vim.bo[buf].filetype] or ''):gmatch('%S+') do known[word] = true end
-    if index.supported(buf) then
-        for _, entry in ipairs(index.entries(buf)) do known[entry.name] = true end
-    else
-        for _, item in ipairs(generic_symbols(buf)) do known[item.label] = true end
-    end
-    return known
+    local source = index.supported(buf) and index.entries(buf) or generic_symbols(buf) -- Same table while nothing is parsed again
+    return derive('known' .. vim.bo[buf].filetype, source, function()
+        local known = {}
+        for word in (lists[vim.bo[buf].filetype] or ''):gmatch('%S+') do known[word] = true end
+        if index.supported(buf) then
+            for _, entry in ipairs(source) do known[entry.name] = true end
+        else
+            for _, item in ipairs(source) do known[item.label] = true end
+        end
+        return known
+    end)
 end
 
 local words = {}
@@ -402,7 +450,7 @@ function words:complete(params, callback)
     local buf = params.context.bufnr
     local tick = vim.api.nvim_buf_get_changedtick(buf)
     local cached = words_cache[buf]
-    if not cached or cached.tick ~= tick then
+    if not cached or (cached.tick ~= tick and vim.uv.now() - cached.time > 400) then -- Not read again at each key
         local list, seen = {}, {}
         for _, line in ipairs(vim.api.nvim_buf_get_lines(buf, 0, 20000, false)) do
             for word in line:gmatch('[%w_]+') do
@@ -412,17 +460,20 @@ function words:complete(params, callback)
                 end
             end
         end
-        cached = { tick = tick, list = list }
+        cached = { tick = tick, list = list, time = vim.uv.now() }
         words_cache[buf] = cached
     end
 
     local typed = typed_word(params.context)
     local known = known_names(buf)
-    local items = {}
-    for _, item in ipairs(cached.list) do
-        if item.label ~= typed and not known[item.label] then table.insert(items, item) end -- Not the word being typed
-    end
-    reply(callback, items, typed)
+    local items = derive('words' .. tostring(known), cached.list, function() -- Without the names the other sources already offer
+        local list = {}
+        for _, item in ipairs(cached.list) do
+            if not known[item.label] then table.insert(list, item) end
+        end
+        return list
+    end)
+    reply(callback, items, typed, typed)
 end
 
 --------------------------------------------------------------------------------

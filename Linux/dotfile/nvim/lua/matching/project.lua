@@ -152,13 +152,13 @@ end
 --------------------------------------------------------------------------------
 -- Candidates: include, src... of every folder above the file (nearest first)
 local function guessed_dirs(file)
-    local dirs = {}
+    local dirs, root = {}, M.root(file)
     for _, dir in ipairs(ancestors(file)) do
         for _, sub in ipairs(sub_dirs) do
             local path = sub == '' and dir or (dir .. '/' .. sub)
             if (sub == '' or is_dir(path)) and not vim.tbl_contains(dirs, path) then table.insert(dirs, path) end
         end
-        if vim.uv.fs_stat(dir .. '/.git') then break end
+        if dir == root then break end -- Not above the project
     end
     return dirs
 end
