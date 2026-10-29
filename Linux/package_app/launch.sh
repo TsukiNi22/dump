@@ -92,6 +92,44 @@ setup_docker() {
         && usermod -aG docker "$SUDO_USER"
 }
 
+# GPU drivers and compute libraries chosen from the hardware found by lspci (nvidia, amd, intel)
+setup_gpu() {
+    local gpus
+    local status=0
+
+    pkg_install pciutils || return 1
+    gpus=$(lspci -nn | grep -i -E "vga|3d|display" || true)
+    if [[ -z "$gpus" ]]; then
+        info "No GPU found"
+        return 0
+    fi
+    if grep -qi "nvidia" <<< "$gpus"; then
+        info "NVIDIA GPU: proprietary driver + CUDA (graphics, ollama, compute)"
+        case "$OS_FAMILY" in
+            rpm) pkg_install akmod-nvidia xorg-x11-drv-nvidia-cuda xorg-x11-drv-nvidia-cuda-libs || status=1 ;;
+            deb) pkg_install nvidia-driver nvidia-cuda-toolkit nvidia-opencl-icd || status=1 ;;
+            arch) pkg_install nvidia-dkms nvidia-utils cuda opencl-nvidia || status=1 ;;
+        esac
+    fi
+    if grep -qi -E "amd|ati|radeon" <<< "$gpus"; then
+        info "AMD GPU: mesa + vulkan + ROCm (compute, ollama)"
+        case "$OS_FAMILY" in
+            rpm) pkg_install mesa-vulkan-drivers mesa-dri-drivers rocm-opencl rocm-hip || status=1 ;;
+            deb) pkg_install mesa-vulkan-drivers mesa-opencl-icd libdrm-amdgpu1 || status=1 ;;
+            arch) pkg_install mesa vulkan-radeon rocm-hip-runtime rocm-opencl-runtime || status=1 ;;
+        esac
+    fi
+    if grep -qi "intel" <<< "$gpus"; then
+        info "Intel GPU: media driver + vulkan"
+        case "$OS_FAMILY" in
+            rpm) pkg_install intel-media-driver mesa-vulkan-drivers || status=1 ;;
+            deb) pkg_install intel-media-va-driver mesa-vulkan-drivers || status=1 ;;
+            arch) pkg_install intel-media-driver vulkan-intel || status=1 ;;
+        esac
+    fi
+    return "$status"
+}
+
 # =========================
 # Program
 # =========================
@@ -101,13 +139,23 @@ step "ASCIIQUARIUM" "Setup of asciiquarium" setup_asciiquarium
 if [[ "$OS_FAMILY" == "rpm" ]]; then
     step "SETUP-RPM-FUSION" "Setup RPM Fusion" setup_rpm_fusion
 fi
+step "SETUP-GPU" "Setup of the GPU drivers" setup_gpu
 step "SETUP-FLATHUB" "Setup Flathub" \
     flatpak remote-add --if-not-exists flathub "$FLATHUB_URL"
 
 # Used by the zshrc aliases (cmake/make/docker/valgrind/tmux/zenity/play/xeyes/upower)
 step "DEV-TOOLS" "Download development tools" \
     pkg_install gcc gcc-c++ clang make cmake ccache gtest-devel valgrind python3 python3-pip \
-        tmux zenity sox xeyes upower
+        tmux zenity sox xeyes upower doxygen llvm perf dos2unix rpm-build rpm-sign createrepo_c \
+        java-25-openjdk-devel k6
+step "DEV-LIBS" "Download development libraries" \
+    pkg_install lua-devel json-devel cpp-httplib-devel libsodium-devel libconfig-devel ncurses-devel \
+        qt6-qtbase-devel
+step "CLI-TOOLS" "Download command line tools" pkg_install htop nmap nmap-ncat rsync lrzsz glow android-tools
+if [[ "$OS_FAMILY" == "rpm" ]]; then
+    step "MINGW" "Download of the Windows cross compiler" \
+        pkg_install mingw64-gcc-c++ mingw64-openssl mingw64-libutils mingw64-libutils-db
+fi
 step "SETUP-DOCKER" "Setup of docker" setup_docker
 step "DOWNLOAD-CSFML" "Download of the csfml" pkg_install CSFML CSFML-devel
 step "CYBER-SECURITY" "Download cyber security package" pkg_install binwalk gobuster hydra john
