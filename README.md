@@ -96,26 +96,20 @@ Git user config, `~/delivery` & `~/personal_delivery`, `~/.ssh/git` key, then cl
 
 ### Wayland
 [Hyprland](https://hypr.land) and the configs of the [wayland-desktop](https://github.com/TsukiNi22/wayland-desktop)
-repository (`install.sh` of its `main` branch), chosen when the setup starts:
+repository, chosen when the setup starts; its `install.sh` (`main` branch: the local clone of the Git setup, else a managed
+clone in `~/.local/share/wayland-desktop`) installs the packages of the chosen config for the distribution, then the configs:
 
 | Choice | Content |
 | ------ | ------- |
 | `Wayland` | every style + a switcher in the top bar (click: menu, scroll: next / previous, `Super+Shift+W`), GNOME-like overview (`Super`), live wallpapers |
 | `System`, `Dev / low level`, `Ado / blue rose`, `Terminal / better-tty`, `Miku`, `Photographer` | one style alone |
-| `Remove the config` | remove the configs, the saved files are put back |
-
-| Family | Hyprland & hyprlock |
-| ------ | ------------------- |
-| fedora-like | copr `sdegler/hyprland` (not in the Fedora repositories) |
-| debian-like | repositories of the distribution (Debian 13+, recent Ubuntu), skipped when missing |
-| arch-like | official repositories |
+| `Remove the config` | remove the configs, the saved files are put back (the packages stay) |
 
 > [!NOTE]
-> The other packages: `waybar`, `wofi`, `kitty`, `swaybg`, `mako`, `grim`, `slurp`, `wl-clipboard`, `brightnessctl`,
-> `playerctl`, `nautilus`, `btop`, the Adwaita cursor, the JetBrains Mono, Font Awesome, Noto CJK, Adwaita Sans, Noto Serif
-> and Noto Sans Symbols 2 fonts, `quickshell` (overview), `cava` (music bars), python GTK, WebKit 4.1 and `gtk-layer-shell`
-> (live wallpapers); one missing in the repositories of the family is skipped (the overview falls back to the wofi launcher,
-> the wallpaper to the still image). Log out and choose Hyprland at the login screen.
+> The packages (Hyprland, waybar, quickshell, cava, the live wallpapers, the radio of the Ado and Miku styles...) and their
+> names per distribution (fedora-like with the copr `sdegler/hyprland`, debian-like, arch-like) are listed in the
+> `install.sh` of wayland-desktop; one missing in the repositories of the family is skipped. Log out and choose Hyprland at
+> the login screen.
 
 ## Get Information about usb id (`vendor-id` / `device-id`)
 
