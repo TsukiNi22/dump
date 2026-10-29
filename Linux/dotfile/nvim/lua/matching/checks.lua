@@ -184,10 +184,24 @@ function M.prewarm(buf)
     if (filetype ~= 'c' and filetype ~= 'cpp') or vim.api.nvim_buf_get_name(buf) == '' then return end
     if vim.fn.executable(filetype == 'c' and 'clang' or 'clang++') ~= 1 then return end
     project.prepare(vim.api.nvim_buf_get_name(buf)) -- List of the headers of the project, in the background
-    require('matching.index').entries(buf) -- Symbols of the file and its includes: the first completion is instant
-    pcall(function() require('lazy').load({ plugins = { 'nvim-cmp' } }) end) -- Completion ready before the first insert
-    local sources = package.loaded['matching.sources']
-    if sources then sources.prewarm(buf) end
+    -- One step at a time with a pause between them (each is a few tens of ms): nothing is felt if a key is typed meanwhile
+    local function step(delay, action)
+        vim.defer_fn(function()
+            if vim.api.nvim_buf_is_valid(buf) and vim.api.nvim_get_current_buf() == buf and vim.fn.mode() == 'n' then pcall(action) end
+        end, delay)
+    end
+    step(100, function() require('lazy').load({ plugins = { 'nvim-cmp' } }) end) -- Completion ready before the first insert
+    step(300, function() require('matching.index').entries(buf) end)              -- Symbols of the file and its includes
+    step(500, function() -- Queries of the documentation window (markdown), compiled before it opens for the first time
+        for _, lang in ipairs({ 'markdown', 'markdown_inline' }) do
+            pcall(vim.treesitter.language.add, lang)
+            pcall(vim.treesitter.query.get, lang, 'highlights')
+        end
+    end)
+    step(700, function()
+        local sources = package.loaded['matching.sources']
+        if sources then sources.prewarm(buf) end
+    end)
     local plan = plan_of(buf, filetype)
     if plan.includes > 0 then build_pch(plan) end
 end

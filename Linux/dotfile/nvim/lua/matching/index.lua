@@ -274,8 +274,18 @@ end
 
 function M.supported(buf) return language_of(buf or 0) ~= nil end
 
-local follow_cache = {} -- buffer -> { sig, time, extra }: entries of the includes, resolved again only every few seconds
+local follow_cache = {} -- buffer -> { signature, time, extra }: entries of the includes, resolved again only every few seconds
+local running = {}      -- buffer -> true while the includes are read (in slices)
 
+local function publish(buf, tick, entries, extra)
+    local all = vim.list_extend({}, entries)
+    vim.list_extend(all, extra)
+    buffer_cache[buf] = { tick = tick, all = all }
+    return all
+end
+
+-- Reading the includes (parsing the headers) is cut in slices of a few ms: the editor never waits for all of them. The
+-- entries of the buffer alone (cheap) are given at once, the ones of the includes come when ready
 local function rebuild(buf, lang)
     local tick = vim.api.nvim_buf_get_changedtick(buf)
     local text = table.concat(vim.api.nvim_buf_get_lines(buf, 0, -1, false), '\n')
@@ -288,11 +298,18 @@ local function rebuild(buf, lang)
     signature = table.concat(signature, '\n')
 
     local cached = follow_cache[buf]
-    local extra
     if cached and cached.signature == signature and os.time() - cached.time < 3 then
-        extra = cached.extra -- Same #include lines: no stat / read of the headers again
-    else
-        extra = {}
+        return publish(buf, tick, entries, cached.extra) -- Same #include lines: no stat / read of the headers again
+    end
+
+    local previous = cached and cached.extra or {} -- Meanwhile the entries of the last reading
+    local provisional = publish(buf, tick, entries, previous)
+    if running[buf] then return provisional end
+    running[buf] = true
+
+    local extra = {}
+    local slice_start = vim.uv.hrtime()
+    local function follow_includes()
         local visited, files = { [name] = true }, 0
         local function follow(list, depth)
             for _, include in ipairs(list) do
@@ -306,18 +323,26 @@ local function rebuild(buf, lang)
                     for _, entry in ipairs(file.entries) do
                         if not (system and entry.name:sub(1, 1) == '_') then table.insert(extra, entry) end
                     end
+                    if vim.uv.hrtime() - slice_start > 6e6 then coroutine.yield() end -- 6 ms at a time
                     if depth < 3 then follow(file.includes, depth + 1) end
                 end
             end
         end
         follow(includes, 1)
-        follow_cache[buf] = { signature = signature, time = os.time(), extra = extra }
     end
 
-    local all = vim.list_extend({}, entries)
-    vim.list_extend(all, extra)
-    buffer_cache[buf] = { tick = tick, all = all }
-    return all
+    local worker = coroutine.create(follow_includes)
+    local function pump()
+        slice_start = vim.uv.hrtime()
+        if not vim.api.nvim_buf_is_valid(buf) then running[buf] = nil return end
+        local ok = coroutine.resume(worker)
+        if ok and coroutine.status(worker) == 'suspended' then return vim.defer_fn(pump, 1) end
+        running[buf] = nil
+        follow_cache[buf] = { signature = signature, time = os.time(), extra = extra }
+        if ok then publish(buf, tick, entries, extra) end
+    end
+    vim.defer_fn(pump, 1)
+    return provisional
 end
 
 -- The buffer is parsed again only once the typing pauses (the previous result is used meanwhile): no parse per key

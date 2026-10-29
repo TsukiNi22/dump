@@ -15,7 +15,9 @@ return {
             local luasnip = require('luasnip')
 
             -- Load friendly snippets
-            vim.schedule(function() require("luasnip.loaders.from_vscode").lazy_load() end) -- After the first draw
+            -- After the first draw, and not for C / C++: their 800 ms of generic snippets froze the first completion (the [std] source
+            -- already offers the skeletons of C / C++)
+            vim.schedule(function() require("luasnip.loaders.from_vscode").lazy_load({ exclude = { 'c', 'cpp' } }) end)
 
             require('matching.sources').register()
 

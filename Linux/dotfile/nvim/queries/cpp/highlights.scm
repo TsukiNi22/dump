@@ -1,183 +1,116 @@
-; Copy of the nvim-treesitter highlights for cpp without the patterns nested 3 qualified_identifier deep (a::b::c::f()):
-; compiling them takes ~0.7 s the first time a C++ file is opened, the rest is the same
-; inherits: c
+; Light highlights for C++, written for speed: the stock ones (the C ones plus ~270 lines of nested patterns) take ~0.9 s to
+; compile when the first C++ file opens, and that is a frozen editor. Flat patterns compile in a fraction of that.
+; Only the information given by the nesting is lost (a::b::c::f()).
 
-((identifier) @variable.member
-  (#lua-match? @variable.member "^m_.*$"))
-
-(parameter_declaration
-  declarator: (reference_declarator) @variable.parameter)
-
-; function(Foo ...foo)
-(variadic_parameter_declaration
-  declarator: (variadic_declarator
-    (_) @variable.parameter))
-
-; int foo = 0
-(optional_parameter_declaration
-  declarator: (_) @variable.parameter)
-
-;(field_expression) @variable.parameter ;; How to highlight this?
-((field_expression
-  (field_identifier) @function.method) @_parent
-  (#has-parent? @_parent template_method function_declarator))
-
-(field_declaration
-  (field_identifier) @variable.member)
-
-(field_initializer
-  (field_identifier) @property)
-
-(function_declarator
-  declarator: (field_identifier) @function.method)
-
-(concept_definition
-  name: (identifier) @type.definition)
-
-(alias_declaration
-  name: (type_identifier) @type.definition)
-
-(auto) @type.builtin
-
-(namespace_identifier) @module
-
-((namespace_identifier) @type
-  (#lua-match? @type "^[%u]"))
-
-(case_statement
-  value: (qualified_identifier
-    (identifier) @constant))
-
-(using_declaration
-  .
-  "using"
-  .
-  "namespace"
-  .
-  [
-    (qualified_identifier)
-    (identifier)
-  ] @module)
-
-(destructor_name
-  (identifier) @function.method)
-
-; functions
-(function_declarator
-  (qualified_identifier
-    (identifier) @function))
-
-(function_declarator
-  (qualified_identifier
-    (qualified_identifier
-      (identifier) @function)))
-
-(function_declarator
-  (template_function
-    (identifier) @function))
-
-(operator_name) @function
-
-"operator" @function
-
-"static_assert" @function.builtin
-
-(call_expression
-  (qualified_identifier
-    (identifier) @function.call))
-
-(call_expression
-  (qualified_identifier
-    (qualified_identifier
-      (identifier) @function.call)))
-
-(call_expression
-  (template_function
-    (identifier) @function.call))
-
-(call_expression
-  (qualified_identifier
-    (template_function
-      (identifier) @function.call)))
-
-(call_expression
-  (qualified_identifier
-    (qualified_identifier
-      (template_function
-        (identifier) @function.call))))
-
-; methods
-(function_declarator
-  (template_method
-    (field_identifier) @function.method))
-
-(call_expression
-  (field_expression
-    (field_identifier) @function.method.call))
-
-(call_expression
-  (field_expression
-    (template_method
-      (field_identifier) @function.method.call)))
-
-; constructors
-((function_declarator
-  (qualified_identifier
-    (identifier) @constructor))
-  (#lua-match? @constructor "^%u"))
-
-((call_expression
-  function: (identifier) @constructor)
-  (#lua-match? @constructor "^%u"))
-
-((call_expression
-  function: (qualified_identifier
-    name: (identifier) @constructor))
-  (#lua-match? @constructor "^%u"))
-
-((call_expression
-  function: (field_expression
-    field: (field_identifier) @constructor))
-  (#lua-match? @constructor "^%u"))
-
-; constructing a type in an initializer list: Constructor ():  **SuperType (1)**
-((field_initializer
-  (field_identifier) @constructor
-  (argument_list))
-  (#lua-match? @constructor "^%u"))
-
-; Constants
-(this) @variable.builtin
-
-(null
-  "nullptr" @constant.builtin)
-
-(true) @boolean
-
-(false) @boolean
+(comment) @comment
 
 ; Literals
-(raw_string_literal) @string
+[
+  (string_literal)
+  (raw_string_literal)
+  (system_lib_string)
+] @string
+
+(char_literal) @character
+(escape_sequence) @string.escape
+(number_literal) @number
+[
+  (true)
+  (false)
+] @boolean
+
+(null) @constant.builtin
+(this) @variable.builtin
+
+; Types
+(primitive_type) @type.builtin
+(sized_type_specifier) @type.builtin
+(auto) @type.builtin
+(type_identifier) @type
+(namespace_identifier) @module
+
+; Names
+(field_identifier) @variable.member
+(statement_identifier) @label
+(parameter_declaration
+  declarator: (identifier) @variable.parameter)
+
+((identifier) @constant
+  (#lua-match? @constant "^[A-Z][A-Z0-9_]+$"))
+
+((namespace_identifier) @type
+  (#lua-match? @type "^[A-Z]"))
+
+; Functions
+(function_declarator
+  declarator: (identifier) @function)
+(function_declarator
+  declarator: (qualified_identifier
+    name: (identifier) @function))
+(function_declarator
+  declarator: (field_identifier) @function.method)
+(call_expression
+  function: (identifier) @function.call)
+(call_expression
+  function: (qualified_identifier
+    name: (identifier) @function.call))
+(call_expression
+  function: (field_expression
+    field: (field_identifier) @function.method.call))
+(call_expression
+  function: (template_function
+    name: (identifier) @function.call))
+(destructor_name
+  (identifier) @function.method)
+(operator_name) @function
+
+; Preprocessor
+[
+  "#include"
+  "#define"
+  "#if"
+  "#ifdef"
+  "#ifndef"
+  "#else"
+  "#elif"
+  "#elifdef"
+  "#elifndef"
+  "#endif"
+  (preproc_directive)
+] @keyword.directive
+(preproc_def
+  name: (identifier) @constant.macro)
+(preproc_function_def
+  name: (identifier) @constant.macro)
 
 ; Keywords
 [
-  "try"
-  "catch"
-  "noexcept"
-  "throw"
-] @keyword.exception
+  "if"
+  "else"
+  "switch"
+  "case"
+  "default"
+] @keyword.conditional
 
 [
-  "decltype"
-  "explicit"
-  "friend"
-  "override"
-  "using"
-  "requires"
-  "constexpr"
+  "for"
+  "while"
+  "do"
+] @keyword.repeat
+
+[
+  "break"
+  "continue"
+  "goto"
 ] @keyword
 
+"return" @keyword.return
+
 [
+  "struct"
+  "union"
+  "enum"
+  "typedef"
   "class"
   "namespace"
   "template"
@@ -186,49 +119,104 @@
 ] @keyword.type
 
 [
-  "co_await"
-  "co_yield"
-  "co_return"
-] @keyword.coroutine
-
-[
+  (type_qualifier)
+  (storage_class_specifier)
+  "constexpr"
+  "virtual"
+  "override"
+  "final"
   "public"
   "private"
   "protected"
-  "final"
-  "virtual"
+  "explicit"
+  "friend"
+  "mutable"
 ] @keyword.modifier
+
+[
+  "try"
+  "catch"
+  "throw"
+  "noexcept"
+] @keyword.exception
 
 [
   "new"
   "delete"
+  "sizeof"
+  "and"
+  "or"
+  "not"
   "xor"
   "bitand"
   "bitor"
   "compl"
-  "not"
-  "xor_eq"
-  "and_eq"
-  "or_eq"
-  "not_eq"
-  "and"
-  "or"
 ] @keyword.operator
 
-"<=>" @operator
+[
+  "using"
+  "decltype"
+  "requires"
+  "operator"
+  "static_assert"
+  "co_await"
+  "co_yield"
+  "co_return"
+] @keyword
 
-"::" @punctuation.delimiter
+; Operators and punctuation
+[
+  "="
+  "+"
+  "-"
+  "*"
+  "/"
+  "%"
+  "=="
+  "!="
+  "<"
+  ">"
+  "<="
+  ">="
+  "&&"
+  "||"
+  "!"
+  "&"
+  "|"
+  "^"
+  "~"
+  "<<"
+  ">>"
+  "+="
+  "-="
+  "*="
+  "/="
+  "%="
+  "&="
+  "|="
+  "^="
+  "<<="
+  ">>="
+  "++"
+  "--"
+  "->"
+  "."
+  "?"
+  "<=>"
+] @operator
 
-(template_argument_list
-  [
-    "<"
-    ">"
-  ] @punctuation.bracket)
+[
+  "("
+  ")"
+  "["
+  "]"
+  "{"
+  "}"
+] @punctuation.bracket
 
-(template_parameter_list
-  [
-    "<"
-    ">"
-  ] @punctuation.bracket)
-
-(literal_suffix) @operator
+[
+  ";"
+  ","
+  ":"
+  "::"
+] @punctuation.delimiter

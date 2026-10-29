@@ -4,6 +4,16 @@ return {
     lazy = false, -- The main branch doesn't support lazy-loading
     build = ":TSUpdate",
     config = function()
+        -- Queries of this config instead of the installed ones (a file of the runtime path cannot replace a query that
+        -- "inherits" another one): light C++ highlights, no injections for C / C++ (see queries/cpp/highlights.scm)
+        local file = io.open(vim.fn.stdpath('config') .. '/queries/cpp/highlights.scm', 'r')
+        if file then
+            vim.treesitter.query.set('cpp', 'highlights', file:read('*a'))
+            file:close()
+        end
+        vim.treesitter.query.set('cpp', 'injections', '')
+        vim.treesitter.query.set('c', 'injections', '')
+
         -- Needs tree-sitter-cli + a C compiler (async, done once)
         vim.defer_fn(function() -- After the start: checking the parsers is not needed to display the first file
             require("nvim-treesitter").install({
