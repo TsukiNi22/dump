@@ -185,6 +185,9 @@ function M.prewarm(buf)
     if vim.fn.executable(filetype == 'c' and 'clang' or 'clang++') ~= 1 then return end
     project.prepare(vim.api.nvim_buf_get_name(buf)) -- List of the headers of the project, in the background
     require('matching.index').entries(buf) -- Symbols of the file and its includes: the first completion is instant
+    pcall(function() require('lazy').load({ plugins = { 'nvim-cmp' } }) end) -- Completion ready before the first insert
+    local sources = package.loaded['matching.sources']
+    if sources then sources.prewarm(buf) end
     local plan = plan_of(buf, filetype)
     if plan.includes > 0 then build_pch(plan) end
 end

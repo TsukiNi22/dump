@@ -52,10 +52,10 @@ return {
                     end, { "i", "s" }),
                 }),
                 performance = {
-                    debounce = 40,         -- ms without key before the menu is refreshed (default 60)
-                    throttle = 20,
-                    fetching_timeout = 150, -- A slow source is left behind instead of blocking the menu
-                    max_view_entries = 40,
+                    debounce = 8,          -- ms before the menu is refreshed after a source answered (default 60)
+                    throttle = 8,
+                    fetching_timeout = 80, -- A slow source is left behind instead of blocking the menu
+                    max_view_entries = 25,
                 },
                 formatting = {
                     fields = { 'abbr', 'kind', 'menu' },
@@ -94,6 +94,17 @@ return {
                 config.view.entries.vertical_positioning = side
                 config.window.completion.max_height = math.max(1, math.min(want, side == 'below' and below or above))
                 return open_view(self, offset, entries)
+            end
+
+            -- The documentation window is built when the selection stays still, not for each entry passed over
+            local docs_view = require('cmp.view.docs_view')
+            local open_docs = docs_view.open
+            local docs_timer = vim.uv.new_timer()
+            docs_view.open = function(self, e, view)
+                docs_timer:stop()
+                docs_timer:start(90, 0, vim.schedule_wrap(function()
+                    if cmp.visible() then open_docs(self, e, view) end
+                end))
             end
 
             -- Nothing to propose when the only choices are the word already typed, exactly

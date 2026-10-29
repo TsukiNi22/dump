@@ -476,7 +476,25 @@ local function brace_depth(buf, row, col)
     return depth
 end
 
+local body_cache = {} -- buffer -> { row, lines, braces, result }
+
+-- Typing on a line does not change where the cursor is, unless a { or } is typed (or lines are added): the syntax tree
+-- (a parse at each key) is only asked again then
 function M.in_body(buf, row, col)
+    local text = vim.api.nvim_buf_get_lines(buf, row, row + 1, false)[1] or ''
+    local _, opened = text:sub(1, col):gsub('{', '')
+    local _, closed = text:sub(1, col):gsub('}', '')
+    local lines = vim.api.nvim_buf_line_count(buf)
+    local cached = body_cache[buf]
+    if cached and cached.row == row and cached.lines == lines and cached.opened == opened and cached.closed == closed then
+        return cached.result
+    end
+    local result = M.in_body_uncached(buf, row, col)
+    body_cache[buf] = { row = row, lines = lines, opened = opened, closed = closed, result = result }
+    return result
+end
+
+function M.in_body_uncached(buf, row, col)
     local ok, parser = pcall(vim.treesitter.get_parser, buf)
     local trees = ok and parser and parser:parse()
     if not trees or not trees[1] then return brace_depth(buf, row, col) > 0 end

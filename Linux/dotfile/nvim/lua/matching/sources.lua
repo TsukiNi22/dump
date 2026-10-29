@@ -533,6 +533,19 @@ M.sources = {
     keywords = keywords, common = common, include = include, symbols = symbols, members = members, words = words,
 }
 
+-- Builds the caches of every source for a buffer (symbols of the includes, words, catalog) while nobody types: the
+-- first completion does not pay for them
+function M.prewarm(buf)
+    if vim.api.nvim_get_current_buf() ~= buf or not vim.api.nvim_buf_is_loaded(buf) then return end
+    local params = { context = { bufnr = buf, cursor_before_line = '', cursor = { line = 0 } } }
+    for _, name in ipairs({ 'symbols', 'words', 'common', 'keywords' }) do
+        local source = M.sources[name]
+        if not source.is_available or source:is_available() then
+            pcall(source.complete, source, params, function() end)
+        end
+    end
+end
+
 function M.register()
     for name, source in pairs(M.sources) do cmp.register_source(name, source) end
 end
