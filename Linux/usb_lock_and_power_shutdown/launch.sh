@@ -1,15 +1,14 @@
 #!/bin/bash
-# Usage: sudo bash usb_lock_and_power_shutdown/launch.sh [<vendor-id> <device-id> [<cancel-vendor-id> <cancel-device-id>]]
-# Lock the session when the usb is removed and/or power off when the charger is unplugged
+# Usage: sudo bash usb_lock_and_power_shutdown/launch.sh [<main usbs> [<cancel usbs>]] (lists: "<vendor-id>:<device-id>,...")
+# Lock the session when the last main usb is removed and/or power off when the charger is unplugged
+# (nothing happens while a cancel usb is plugged)
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../utils.sh"
 
-VENDOR_ID="${1:-}"
-DEVICE_ID="${2:-}"
-CANCEL_VENDOR_ID="${3:-}"
-CANCEL_DEVICE_ID="${4:-}"
+MAIN_USBS="${1:-}"
+CANCEL_USBS="${2:-}"
 USB_RULE="/etc/udev/rules.d/80-usb-lock.rules"
 POWER_RULE="/etc/udev/rules.d/80-power-shutdown.rules"
 DETECTION_SCRIPT="/usr/local/bin/usb-lock_power-shutdown.sh"
@@ -30,7 +29,7 @@ reload_rules() {
     ok "Udev rules reloaded"
 }
 
-if usb_is_plugged "$VENDOR_ID" "$DEVICE_ID"; then
+if usbs_any_plugged "$MAIN_USBS"; then
     CHOICE=$(ask_choose "Usb lock & power shutdown:" \
         "USB Lock ($(get_status "$USB_RULE"))" \
         "Power Shutdown ($(get_status "$POWER_RULE"))" \
@@ -83,7 +82,7 @@ fi
 # =========================
 # Activation
 # =========================
-if ! bash "$SCRIPT_DIR/set-file.sh" "$CANCEL_VENDOR_ID" "$CANCEL_DEVICE_ID"; then
+if ! bash "$SCRIPT_DIR/set-file.sh" "$MAIN_USBS" "$CANCEL_USBS"; then
     failed "Setup of the USB & Power detection script"
     exit 1
 fi
@@ -91,9 +90,12 @@ fi
 if [[ "$CHOICE" == "Both (Activation)" || "$CHOICE" == "USB Lock (Activation)" ]]; then
     tmp_rule=$(mktemp)
     trap 'rm -f "$tmp_rule"' EXIT
-    sed -e "s|VENDOR_IDV|$(escape_sed "$VENDOR_ID")|g" \
-        -e "s|DEVICE_IDV|$(escape_sed "$DEVICE_ID")|g" \
-        "$SCRIPT_DIR/80-usb-lock.rules" > "$tmp_rule"
+    # One rule per main usb
+    for usb in ${MAIN_USBS//,/ }; do
+        sed -e "s|VENDOR_IDV|$(escape_sed "${usb%%:*}")|g" \
+            -e "s|DEVICE_IDV|$(escape_sed "${usb##*:}")|g" \
+            "$SCRIPT_DIR/80-usb-lock.rules" >> "$tmp_rule"
+    done
     install_root_file 644 "$tmp_rule" "$USB_RULE"
     ok "USB Lock rule setup"
 fi

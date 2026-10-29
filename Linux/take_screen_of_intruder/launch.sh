@@ -1,14 +1,14 @@
 #!/bin/bash
-# Usage: sudo bash take_screen_of_intruder/launch.sh [<vendor-id> <device-id>]
+# Usage: sudo bash take_screen_of_intruder/launch.sh [<main usbs> [<cancel usbs>]] (lists: "<vendor-id>:<device-id>,...")
 # (asks the max number of pictures kept: 0 = unlimited, else the oldest ones are deleted)
-# Take a webcam picture when the screen is locked and the usb is unplugged (deactivate it without usb)
+# Take a webcam picture when the screen is locked and no main usb is plugged (deactivate it without usb)
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../utils.sh"
 
-VENDOR_ID="${1:-}"
-DEVICE_ID="${2:-}"
+MAIN_USBS="${1:-}"
+CANCEL_USBS="${2:-}"
 SERVICE="usb-capture.service"
 BIN_DIR="/usr/local/bin"
 
@@ -22,7 +22,7 @@ deactivate() {
 }
 
 CHOICE="Deactivate"
-if usb_is_plugged "$VENDOR_ID" "$DEVICE_ID"; then
+if usbs_any_plugged "$MAIN_USBS"; then
     CHOICE=$(ask_choose "Screen of intruder:" "Activate" "Deactivate") || CHOICE="Cancel"
 fi
 case "$CHOICE" in
@@ -49,7 +49,7 @@ else
     info "Only the $MAX_PICTURES last pictures are kept"
 fi
 
-if ! bash "$SCRIPT_DIR/set-file.sh" "$VENDOR_ID" "$DEVICE_ID" "$MAX_PICTURES"; then
+if ! bash "$SCRIPT_DIR/set-file.sh" "$MAIN_USBS" "$MAX_PICTURES" "$CANCEL_USBS"; then
     failed "Setup of take screen of intruder file"
     exit 1
 fi

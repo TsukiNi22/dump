@@ -1,14 +1,15 @@
 #!/bin/bash
-# Usage: sudo bash pam_usb/launch.sh [<vendor-id> <device-id>]
-# Build pam_usb and require the usb in the auth stack (password AND usb key), deactivate it without usb
+# Usage: sudo bash pam_usb/launch.sh [<main usbs> [<cancel usbs>]] (lists: "<vendor-id>:<device-id>,...")
+# Build pam_usb and require a main usb key in the auth stack (password AND one of the keys), deactivate it without usb
+# (the cancel keys never unlock anything)
 # Fedora-like / arch-like: marked block at the start of the auth stack, debian-like: pam-auth-update profile
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../utils.sh"
 
-VENDOR_ID="${1:-}"
-DEVICE_ID="${2:-}"
+MAIN_USBS="${1:-}"
+CANCEL_USBS="${2:-}"
 PAM_USB_REPO="https://github.com/mcdope/pam_usb.git"
 PAM_BLOCK_START="# >>> dump_script pam_usb >>>"
 PAM_BLOCK_END="# <<< dump_script pam_usb <<<"
@@ -106,7 +107,7 @@ pam_enable() {
 # Program
 # =========================
 CHOICE="Deactivate"
-if usb_is_plugged "$VENDOR_ID" "$DEVICE_ID"; then
+if usbs_any_plugged "$MAIN_USBS"; then
     CHOICE=$(ask_choose "Pam usb:" "Activate" "Deactivate") || CHOICE="Cancel"
 fi
 case "$CHOICE" in
@@ -142,9 +143,9 @@ if ldd "$PAM_DIR/pam_usb.so" | grep -q "not found"; then
 fi
 ok "Download pam usb ($PAM_DIR/pam_usb.so)"
 
-if ! bash "$SCRIPT_DIR/set-file.sh" "$VENDOR_ID" "$DEVICE_ID"; then
+if ! bash "$SCRIPT_DIR/set-file.sh" "$MAIN_USBS" "$CANCEL_USBS"; then
     failed "Setup of the pam usb config"
     exit 1
 fi
 pam_enable
-ok "Pam usb: password AND usb key required to log in"
+ok "Pam usb: password AND a main usb key required to log in"

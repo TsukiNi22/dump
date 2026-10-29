@@ -32,15 +32,40 @@ USB_STATE_FILE="$DUMP_STATE_DIR/usb"
 RUNNING_FILE="$DUMP_STATE_DIR/running" # "<pid> <key> <name>" of the running task
 MODE_FILE="$DUMP_STATE_DIR/mode"       # menu | answer (a task waits for an answer)
 
+# State file: one key per line, "main:<vendor-id>:<device-id>" or "cancel:<vendor-id>:<device-id>"
+# (old format: 4 lines main vendor / device, cancel vendor / device)
+# Set MAIN_USBS and CANCEL_USBS ("<vendor-id>:<device-id>,..."), main_usb = the first main key
 load_usbs() {
-    vendor_id=""
-    device_id=""
-    cancel_vendor_id=""
-    cancel_device_id=""
+    local line
+    local -a old=()
+
+    MAIN_USBS=""
+    CANCEL_USBS=""
     if [[ -f "$USB_STATE_FILE" ]]; then
-        { read -r vendor_id; read -r device_id; read -r cancel_vendor_id; read -r cancel_device_id; } \
-            < "$USB_STATE_FILE" || true
+        if grep -q -E '^(main|cancel):' "$USB_STATE_FILE"; then
+            while read -r line; do
+                case "$line" in
+                    main:*) MAIN_USBS+="${MAIN_USBS:+,}${line#main:}" ;;
+                    cancel:*) CANCEL_USBS+="${CANCEL_USBS:+,}${line#cancel:}" ;;
+                esac
+            done < "$USB_STATE_FILE"
+        else
+            mapfile -t old < "$USB_STATE_FILE"
+            [[ -n "${old[0]:-}" && -n "${old[1]:-}" ]] && MAIN_USBS="${old[0]}:${old[1]}"
+            [[ -n "${old[2]:-}" && -n "${old[3]:-}" ]] && CANCEL_USBS="${old[2]}:${old[3]}"
+        fi
     fi
+    return 0
+}
+
+# Save MAIN_USBS and CANCEL_USBS
+save_usbs() {
+    local usb
+
+    {
+        for usb in ${MAIN_USBS//,/ }; do echo "main:$usb"; done
+        for usb in ${CANCEL_USBS//,/ }; do echo "cancel:$usb"; done
+    } > "$USB_STATE_FILE"
 }
 
 # Print "<pid> <key> <name>" of the running task (nothing when no task runs)
@@ -61,66 +86,101 @@ mode() {
 # =========================
 # Usb selection
 # =========================
-# Ask a usb, print "<vendor-id>\n<device-id>" (empty when none), return 1 when cancelled
-select_usb() {
+# Ask the usb keys of a role one by one, print "<vendor-id>:<device-id>" per line (nothing when none),
+# return 1 when cancelled. A key already chosen, or listed in <excluded> (the keys of the other role), isn't proposed
+select_usb_list() {
     local header="$1"
+    local excluded="$2"
+    local -a chosen=()
     local -a choices=()
+    local -a keys=()
     local selected=""
+    local usb=""
     local vendor_id=""
     local device_id=""
+    local line
 
-    mapfile -t choices < <(lsusb | awk '{print $6 " - " substr($0, index($0, $7))}')
-    selected=$(ask_choose "$header" "${choices[@]}" "Manual" "None") || return 1
-    case "$selected" in
-        "Manual")
-            vendor_id=$(ask_input "Usb vendor-id (ex: ffff):") || return 1
-            device_id=$(ask_input "Usb device-id (ex: 5678):") || return 1
-            ;;
-        "None"|"")
-            ;;
-        *)
-            vendor_id=$(echo "$selected" | cut -d' ' -f1 | cut -d: -f1)
-            device_id=$(echo "$selected" | cut -d' ' -f1 | cut -d: -f2)
-            ;;
-    esac
-    printf '%s\n%s\n' "$vendor_id" "$device_id"
+    while true; do
+        choices=()
+        while read -r line; do
+            usb="${line%% *}"
+            if ! usb_in_list "$usb" "$excluded" && ! usb_in_list "$usb" "$(IFS=,; echo "${chosen[*]:-}")"; then
+                choices+=("$usb - ${line#* }")
+            fi
+        done < <(lsusb | awk '{print $6 " " substr($0, index($0, $7))}')
+        selected=$(ask_choose "$header (chosen: ${chosen[*]:-none})" "${choices[@]}" "Manual" "Done") || return 1
+        case "$selected" in
+            "Manual")
+                vendor_id=$(ask_input "Usb vendor-id (ex: ffff):") || return 1
+                device_id=$(ask_input "Usb device-id (ex: 5678):") || return 1
+                usb="$vendor_id:$device_id"
+                ;;
+            "Done"|"")
+                break
+                ;;
+            *)
+                usb="${selected%% *}"
+                ;;
+        esac
+        if [[ ! "$usb" =~ ^[0-9A-Fa-f]{4}:[0-9A-Fa-f]{4}$ ]]; then
+            warning "'$usb' is not a vendor-id:device-id"
+        elif usb_in_list "$usb" "$excluded"; then
+            warning "$usb is already used by the other role: a key can't be a main key and a cancel key"
+        elif usb_in_list "$usb" "$(IFS=,; echo "${chosen[*]:-}")"; then
+            warning "$usb is already chosen"
+        else
+            chosen+=("${usb,,}")
+        fi
+    done
+    keys=("${chosen[@]}")
+    [[ ${#keys[@]} -gt 0 ]] && printf '%s\n' "${keys[@]}"
+    return 0
 }
 
-# Print the state of the selected usb
-check_usb() {
+# Print the state of the selected usb keys of a role
+check_usbs() {
     local name="$1"
-    local vendor_id="$2"
-    local device_id="$3"
+    local list="$2"
+    local usb
 
-    if [[ -z "$vendor_id" || -z "$device_id" ]]; then
-        info "The $name usb is not set"
-    elif ! usb_is_plugged "$vendor_id" "$device_id"; then
-        failed "Can't find a usb with the given vendor-id and device-id ($vendor_id:$device_id)"
-    else
-        ok "The $name usb has been found ($vendor_id:$device_id)"
+    if [[ -z "$list" ]]; then
+        info "No $name usb set"
+        return 0
     fi
+    for usb in ${list//,/ }; do
+        if lsusb -d "$usb" > /dev/null 2>&1; then
+            ok "The $name usb has been found ($usb)"
+        else
+            failed "Can't find the $name usb ($usb): it is saved but not plugged"
+        fi
+    done
 }
 
-# Ask the main & cancel usb, saved in the state (one value per line: an empty id must not shift the others)
+# Ask the main (security) keys then the cancel keys, saved in the state: no key can be in both lists
 # Cancelled -> the current keys are kept, return 1
 select_usbs() {
-    local answer
-    local -a main=()
-    local -a cancel=()
+    local main
+    local cancel
 
-    if ! answer=$(select_usb "Main usb (optional but recommended):"); then
+    if ! main=$(select_usb_list "Main usb keys (optional but recommended)" ""); then
         skipped "Usb keys unchanged"
         return 1
     fi
-    mapfile -t main <<< "$answer"
-    check_usb "main" "${main[0]:-}" "${main[1]:-}"
-    if ! answer=$(select_usb "Cancel usb (optional):"); then
+    main=$(paste -sd, <<< "$main")
+    if ! cancel=$(select_usb_list "Cancel usb keys (optional, not a main key)" "$main"); then
         skipped "Usb keys unchanged"
         return 1
     fi
-    mapfile -t cancel <<< "$answer"
-    check_usb "cancel" "${cancel[0]:-}" "${cancel[1]:-}"
-    printf '%s\n' "${main[0]:-}" "${main[1]:-}" "${cancel[0]:-}" "${cancel[1]:-}" > "$USB_STATE_FILE"
+    cancel=$(paste -sd, <<< "$cancel")
+    MAIN_USBS="$main"
+    CANCEL_USBS="$cancel"
+    if usbs_overlap "$MAIN_USBS" "$CANCEL_USBS" > /dev/null; then
+        failed "A key can't be both a main key and a cancel key"
+        return 1
+    fi
+    check_usbs "main" "$MAIN_USBS"
+    check_usbs "cancel" "$CANCEL_USBS"
+    save_usbs
 }
 
 # =========================
@@ -149,17 +209,17 @@ task_setup() {
     bash "$@"
 }
 
-# Run a setup needing the main usb key: without it, propose to choose it now (or only deactivate)
+# Run a setup needing a main usb key: without one plugged, propose to choose them now (or only deactivate)
 task_usb_setup() {
     local script="$1"
     local choice
 
     load_usbs
-    if ! usb_is_plugged "$vendor_id" "$device_id"; then
-        choice=$(ask_choose "$TASK_NAME needs the main usb key:" \
-            "Choose the usb key now" "Deactivation only") || choice="Cancel"
+    if ! usbs_any_plugged "$MAIN_USBS"; then
+        choice=$(ask_choose "$TASK_NAME needs a main usb key:" \
+            "Choose the usb keys now" "Deactivation only") || choice="Cancel"
         case "$choice" in
-            "Choose the usb key now")
+            "Choose the usb keys now")
                 section "USB-KEYS"
                 if ! select_usbs; then
                     skipped "$TASK_NAME (no usb key)"
@@ -177,7 +237,7 @@ task_usb_setup() {
                 ;;
         esac
     fi
-    bash "$script" "$vendor_id" "$device_id" "$cancel_vendor_id" "$cancel_device_id"
+    bash "$script" "$MAIN_USBS" "$CANCEL_USBS"
 }
 
 # =========================
@@ -197,11 +257,11 @@ menu_entries() {
     local usb_keys="${GREY}(optional, not set)${RESET}"
 
     load_usbs
-    if ! usb_is_plugged "$vendor_id" "$device_id"; then
+    if ! usbs_any_plugged "$MAIN_USBS"; then
         usb_state=" ${YELLOW}(usb key needed)${RESET}"
     fi
-    if [[ -n "$vendor_id" ]]; then
-        usb_keys="${GREY}(main: $vendor_id:$device_id, cancel: ${cancel_vendor_id:-none}:${cancel_device_id:-none})${RESET}"
+    if [[ -n "$MAIN_USBS" ]]; then
+        usb_keys="${GREY}(main: $MAIN_USBS, cancel: ${CANCEL_USBS:-none})${RESET}"
     fi
     printf '%s\n' \
         "System Update" \

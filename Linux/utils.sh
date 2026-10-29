@@ -456,6 +456,43 @@ usb_is_plugged() {
     [[ -n "$1" && -n "$2" ]] && lsusb -d "$1:$2" > /dev/null 2>&1
 }
 
+# Lists of usb keys are written "<vendor-id>:<device-id>,<vendor-id>:<device-id>" (empty = no key)
+# Check that at least one usb of a list is plugged
+usbs_any_plugged() {
+    local usb
+
+    for usb in ${1//,/ }; do
+        if lsusb -d "$usb" > /dev/null 2>&1; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+# Check that a usb ("<vendor-id>:<device-id>") is in a list
+usb_in_list() {
+    local usb
+
+    for usb in ${2//,/ }; do
+        [[ "$usb" == "$1" ]] && return 0
+    done
+    return 1
+}
+
+# Check that no usb is in both lists (a key is either a main key or a cancel key): print the ones in both
+usbs_overlap() {
+    local usb
+    local status=1
+
+    for usb in ${1//,/ }; do
+        if usb_in_list "$usb" "$2"; then
+            echo "$usb"
+            status=0
+        fi
+    done
+    return "$status"
+}
+
 # =========================
 # Checks
 # =========================

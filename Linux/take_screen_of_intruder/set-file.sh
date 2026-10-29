@@ -1,22 +1,28 @@
 #!/bin/bash
-# Usage: sudo bash take_screen_of_intruder/set-file.sh <vendor-id> <device-id> [<max pictures> (0 = unlimited)]
+# Usage: sudo bash take_screen_of_intruder/set-file.sh <main usbs> [<max pictures> (0 = unlimited) [<cancel usbs>]]
+# (lists: "<vendor-id>:<device-id>,...")
 # Install the capture scripts and start the usb-capture service for the user
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../utils.sh"
 
-VENDOR_ID="${1:?Error: missing vendor-id}"
-DEVICE_ID="${2:?Error: missing device-id}"
-MAX_PICTURES="${3:-0}"
+MAIN_USBS="${1:?Error: missing main usbs}"
+MAX_PICTURES="${2:-0}"
+CANCEL_USBS="${3:-}"
 SERVICE="usb-capture.service"
 BIN_DIR="/usr/local/bin"
+
+if overlap=$(usbs_overlap "$MAIN_USBS" "$CANCEL_USBS"); then
+    failed "A key can't be both a main key and a cancel key ($overlap)"
+    exit 1
+fi
 
 tmp_file=$(mktemp)
 trap 'rm -f "$tmp_file"' EXIT
 
-sed -e "s|VENDOR_IDV|$(escape_sed "$VENDOR_ID")|g" \
-    -e "s|DEVICE_IDV|$(escape_sed "$DEVICE_ID")|g" \
+sed -e "s|MAIN_USBSV|$(escape_sed "$MAIN_USBS")|g" \
+    -e "s|CANCEL_USBSV|$(escape_sed "$CANCEL_USBS")|g" \
     -e "s|WHOAMI|$(escape_sed "$SUDO_USER")|g" \
     -e "s|USER_HOME|$(escape_sed "$USER_HOME")|g" \
     -e "s|MAX_PICTURESV|$(escape_sed "$MAX_PICTURES")|g" \
