@@ -62,7 +62,7 @@ sudo make
 ### Custom Package & Binary
 | Name | Content |
 | ---- | ------- |
-| [`libutils`](https://github.com/TsukiNi22/libutils) | TsukiNi22 rpm / deb mirror (built from the sources on arch), every build (optimized, debug, asan + headers) |
+| [`libutils`](https://github.com/TsukiNi22/libutils) | From the [my-universe](https://tsukini22.github.io/my-universe/) repositories (rpm / deb / pacman, every package of TsukiNi22; built from the sources on arch as a fallback), every build (optimized, debug, asan + headers) |
 | `xstyle` | Coding style checker of the [ai-utils](https://github.com/TsukiNi22/ai-utils) repository (`~/.local/bin`) |
 
 ### AI
