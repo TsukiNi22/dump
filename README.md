@@ -62,8 +62,9 @@ sudo make
 ### Custom Package & Binary
 | Name | Content |
 | ---- | ------- |
-| [`libutils`](https://github.com/TsukiNi22/libutils) | From the [my-universe](https://tsukini22.github.io/my-universe/) repositories (rpm / deb / pacman, every package of TsukiNi22; built from the sources on arch as a fallback), every build (optimized, debug, asan + headers) |
-| `xstyle` | Coding style checker of the [ai-utils](https://github.com/TsukiNi22/ai-utils) repository (`~/.local/bin`) |
+| [`universe`](https://tsukini22.github.io/my-universe/) | The public package repositories of [my-universe](https://github.com/TsukiNi22/my-universe) (rpm / deb / pacman, every package of TsukiNi22) + [`libutils`](https://github.com/TsukiNi22/libutils), every build (optimized, debug, asan + headers; built from the sources on arch as a fallback) |
+| [`xstyle`](https://github.com/TsukiNi22/xstyle) | Coding style checker: its my-universe package, else built from its repository (`/usr/local`) |
+| `xdesk` | **Private**: asks to set up `gh auth` (else a warning: missing permissions), mirrors its `gh-pages` in `~/.local/share/universe/xdesk` (like `./universe mirror`), registers it and installs `xdesk` |
 
 ### AI
 | Name | Content |
