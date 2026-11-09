@@ -9,7 +9,7 @@ source "$SCRIPT_DIR/../utils.sh"
 CLAUDE_INSTALL_URL="https://claude.ai/install.sh"
 OLLAMA_INSTALL_URL="https://ollama.com/install.sh"
 
-# The tools of the skills (xstyle) are built with clang++ and libutils (Custom Package & Binary setup)
+# The tools of the skills (claude-cluster) are built with clang++ and libutils (Custom Package & Binary setup: universe)
 install_packages gum git curl cmake make clang gcc-c++ python3 || exit 1
 
 # =========================

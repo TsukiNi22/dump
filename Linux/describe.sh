@@ -110,11 +110,12 @@ format() {
             ;;
         "Custom Package & Binary")
             title "Custom Package & Binary"
-            echo "Choose one or both:"
-            echo "  - libutils: TsukiNi22 rpm / deb mirror (built from the sources on arch),"
-            echo "    every build (optimized, debug, asan + headers)"
-            echo "  - xstyle: coding style checker, built from the ai-utils repository into ~/.local/bin"
-            note "xstyle needs libutils: select both on a fresh machine"
+            echo "Choose any of (my-universe, every package of TsukiNi22):"
+            echo "  - universe: the public package repositories (rpm / deb / pacman) + libutils,"
+            echo "    every build (optimized, debug, asan + headers; built from the sources on arch as a fallback)"
+            echo "  - xstyle: coding style checker, its package (else built from its repository into /usr/local)"
+            echo "  - xdesk: private, asks to set up gh auth, mirrors its gh-pages and installs its package"
+            note "Without gh auth the private packages (xdesk) fail: missing permissions"
             ;;
         "AI")
             title "AI"
