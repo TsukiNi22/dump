@@ -14,8 +14,10 @@ OMZ_URL="https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.
 # Packages
 # =========================
 # tree-sitter-cli + gcc: build of the nvim-treesitter parsers, util-linux-user: chsh
+# clang-tools-extra (clangd), nasm, ShellCheck, npm: language servers of nvim and the checks they run
 install_packages vim-enhanced neovim git gcc tree-sitter-cli fastfetch chafa \
-    zsh zoxide sl tmux curl util-linux-user wl-clipboard || exit 1
+    zsh zoxide sl tmux curl util-linux-user wl-clipboard \
+    clang-tools-extra nasm ShellCheck npm || exit 1
 
 # fastfetch isn't in the old debian-like repositories (ex: ubuntu 24.04): official .deb of its releases
 if ! command -v fastfetch > /dev/null && [[ "$OS_FAMILY" == "deb" ]]; then
@@ -72,6 +74,17 @@ if command -v clang++ > /dev/null && run_as_user sh "$USER_HOME/.config/nvim/nat
     ok "Neovim c2dmp library built"
 else
     skipped "Neovim c2dmp library (clang++ or libutils missing)"
+fi
+
+# asm-lsp reads the NASM syntax (its errors come from nasm instead of gcc)
+run_as_user mkdir -p "$USER_HOME/.config/asm-lsp"
+run_as_user cp "$SCRIPT_DIR/asm-lsp/.asm-lsp.toml" "$USER_HOME/.config/asm-lsp/.asm-lsp.toml"
+# Language servers of the user (asm, lua, python, bash, json, yaml, markdown, cmake): release binaries + npm
+run_as_user chmod +x "$USER_HOME/.config/nvim/scripts/install-lsp.sh"
+if run_as_user "$USER_HOME/.config/nvim/scripts/install-lsp.sh" > /dev/null 2>&1; then
+    ok "Neovim language servers installed"
+else
+    skipped "Neovim language servers (download or npm failed: run ~/.config/nvim/scripts/install-lsp.sh)"
 fi
 
 # config.jsonc is generated from config_save.jsonc by rdm_img.sh (fastfetch alias)

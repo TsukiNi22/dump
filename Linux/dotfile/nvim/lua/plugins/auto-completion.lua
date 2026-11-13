@@ -158,15 +158,56 @@ return {
     },
     {
         'neovim/nvim-lspconfig', -- Required for LSP
-        ft = { 'c', 'cpp', 'lua' }, -- Only when such a file is opened
+        -- Only when such a file is opened
+        ft = { 'c', 'cpp', 'lua', 'asm', 'nasm', 'python', 'sh', 'bash', 'json', 'jsonc', 'yaml', 'markdown', 'cmake' },
         config = function()
             local capabilities = require('cmp_nvim_lsp').default_capabilities()
 
             -- Only the servers installed on the machine (no error at each file opened otherwise)
             local servers = {
-                lua_ls = 'lua-language-server',
                 clangd = 'clangd',
+                lua_ls = 'lua-language-server',
+                asm_lsp = 'asm-lsp',
+                pyright = 'pyright-langserver',
+                bashls = 'bash-language-server',
+                jsonls = 'vscode-json-language-server',
+                yamlls = 'yaml-language-server',
+                marksman = 'marksman',
+                neocmake = 'neocmakelsp',
             }
+
+            -- asm-lsp: NASM files too (~/.config/asm-lsp/.asm-lsp.toml picks the NASM syntax). Its completion is left out:
+            -- the [asm] source already gives the instructions with their operands, the syscalls and the snippets (the
+            -- same names twice otherwise); hover, go to definition, references and the nasm errors stay
+            vim.lsp.config('asm_lsp', {
+                filetypes = { 'asm', 'nasm', 'vmasm' },
+                on_init = function(client) client.server_capabilities.completionProvider = nil end,
+            })
+            -- lua_ls: the Lua of Neovim (LuaJIT, the 'vim' global and its API known), no "undefined global vim"
+            vim.lsp.config('lua_ls', {
+                settings = {
+                    Lua = {
+                        runtime = { version = 'LuaJIT' },
+                        workspace = { checkThirdParty = false, library = { vim.env.VIMRUNTIME } },
+                        telemetry = { enable = false },
+                    },
+                },
+            })
+            -- Python: the usual checks only (the strict mode flags every untyped value)
+            vim.lsp.config('pyright', {
+                settings = { python = { analysis = { typeCheckingMode = 'basic' } } },
+            })
+
+            -- Keys of the buffers with a server: gd / gD go to the definition / declaration (K, grr, grn, gra are the
+            -- defaults of Neovim: hover, references, rename, code action)
+            vim.api.nvim_create_autocmd('LspAttach', {
+                group = vim.api.nvim_create_augroup('LspKeys', { clear = true }),
+                callback = function(args)
+                    local opts = { buffer = args.buf, silent = true }
+                    vim.keymap.set('n', 'gd', vim.lsp.buf.definition, opts)
+                    vim.keymap.set('n', 'gD', vim.lsp.buf.declaration, opts)
+                end,
+            })
             -- clangd: the compile database found (CMake, bear...) else the include / src folders above the file as flags
             vim.lsp.config('clangd', {
                 cmd = function(dispatchers, config)

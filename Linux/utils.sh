@@ -287,6 +287,8 @@ pkg_name() {
         arch:gpg) echo "gnupg" ;;
         rpm:*) echo "$1" ;;
         # debian-like
+        deb:clang-tools-extra) echo "clangd" ;;
+        deb:ShellCheck) echo "shellcheck" ;;
         deb:vim-enhanced) echo "vim" ;;
         deb:gcc-c++) echo "g++" ;;
         deb:gtest-devel) echo "libgtest-dev" ;;
@@ -308,6 +310,8 @@ pkg_name() {
         # arch-like
         arch:vim-enhanced) echo "vim" ;;
         arch:gcc-c++) echo "gcc" ;;
+        arch:clang-tools-extra) echo "clang" ;;
+        arch:ShellCheck) echo "shellcheck" ;;
         arch:gh) echo "github-cli" ;;
         arch:gtest-devel) echo "gtest" ;;
         arch:python3) echo "python" ;;
@@ -336,7 +340,9 @@ pkg_name() {
 # Check that a package exists in the repositories of the family
 pkg_available() {
     case "$OS_FAMILY" in
-        rpm) dnf -q list --available "$1" > /dev/null 2>&1 || rpm -q "$1" > /dev/null 2>&1 ;;
+        # A name provided by another package counts too (npm -> nodejs22-npm on fedora)
+        rpm) dnf -q list --available "$1" > /dev/null 2>&1 || rpm -q "$1" > /dev/null 2>&1 \
+            || [[ -n "$(dnf -q repoquery --whatprovides "$1" 2> /dev/null)" ]] ;;
         deb) [[ -n "$(apt-cache policy "$1" 2> /dev/null | grep 'Candidate:' | grep -v '(none)')" ]] ;;
         arch) pacman -Si "$1" > /dev/null 2>&1 || pacman -Q "$1" > /dev/null 2>&1 ;;
     esac
