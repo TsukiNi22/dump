@@ -4,6 +4,13 @@ return {
     lazy = false, -- The main branch doesn't support lazy-loading
     build = ":TSUpdate",
     config = function()
+        -- Synchronous parse (as before Neovim 0.12): with the asynchronous one, the lines drawn while a parse runs get
+        -- no color, and some were never drawn again once it ended (a whole file left white until a :redraw!). A parse
+        -- takes ~15 ms after a change in a file of 800 lines
+        vim.g._ts_force_sync_parsing = true
+        -- jsonc: the json parser reads the comments too
+        vim.treesitter.language.register('json', 'jsonc')
+
         -- Queries of this config instead of the installed ones (a file of the runtime path cannot replace a query that
         -- "inherits" another one): light C++ highlights, only the #define values injected for C / C++ (see queries/cpp/highlights.scm)
         local file = io.open(vim.fn.stdpath('config') .. '/queries/cpp/highlights.scm', 'r')
@@ -25,7 +32,7 @@ return {
             })
         end, 1000)
         vim.api.nvim_create_autocmd("FileType", {
-            pattern = { "c", "cpp", "python", "lua", "bash", "sh", "markdown", "make", "cmake", "json", "yaml" },
+            pattern = { "c", "cpp", "python", "lua", "bash", "sh", "markdown", "make", "cmake", "json", "jsonc", "yaml" },
             callback = function(args)
                 -- After the first draw: compiling the highlight query of C++ takes ~0.5 s the first time, the text must not wait for it
                 vim.defer_fn(function()
