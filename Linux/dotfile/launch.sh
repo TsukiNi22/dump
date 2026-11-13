@@ -94,8 +94,8 @@ ok "Fastfetch config setup"
 
 run_as_user cp "$SCRIPT_DIR/.tmux.conf" "$USER_HOME/.tmux.conf"
 run_as_user mkdir -p "$USER_HOME/.config/tmux"
-run_as_user cp "$SCRIPT_DIR/tmux/mode.sh" "$USER_HOME/.config/tmux/mode.sh"
-run_as_user chmod +x "$USER_HOME/.config/tmux/mode.sh"
+run_as_user cp "$SCRIPT_DIR/tmux/mode.sh" "$SCRIPT_DIR/tmux/scroll.sh" "$USER_HOME/.config/tmux/"
+run_as_user chmod +x "$USER_HOME/.config/tmux/mode.sh" "$USER_HOME/.config/tmux/scroll.sh"
 ok "Tmux config setup"
 
 run_as_user cp "$SCRIPT_DIR/git/ignore" "$USER_HOME/.config/git/ignore"
