@@ -6,6 +6,7 @@ local header_borders = {
     ["/**************************************************************\\"] = true,
     ["@>************************************************************<@"] = true,
     ["#**************************************************************#"] = true,
+    [";**************************************************************;"] = true, -- NASM assembly
     [string.rep('"', 63)] = true,
 }
 
@@ -21,11 +22,12 @@ vim.api.nvim_create_autocmd("BufWritePre", {
             if header_borders[line] then
                 header_found = true
             end
-            local prefix = line:match("^([#@]?)Edition:$")
+            local prefix = line:match("^([#@;]?)Edition:$")
             if header_found and prefix and lines[i + 1] then
                 local ext = vim.fn.fnamemodify(args.file, ":e")
                 local date = os.date("%d/%m/%Y")
-                local mark = prefix == "" and "##" or prefix .. "**" -- "#**" / "@**" for the Makefile / C15 headers
+                -- "#**" / "@**" / ";**" for the Makefile (and GAS) / C15 / NASM headers
+                local mark = prefix == "" and "##" or prefix .. "**"
                 -- The author already written is kept, even blank (the header snippet leaves it to fill in)
                 local current = lines[i + 1]
                 local author = current:match("by @author%s*(.-)%s*$") or current:match(" by%s*(.-)%s*$") or user
