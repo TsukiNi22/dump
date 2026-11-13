@@ -27,3 +27,17 @@ vim.api.nvim_create_autocmd({ 'VimEnter', 'WinEnter', 'BufWinEnter', 'InsertLeav
     callback = function() update_match(false) end,
 })
 vim.api.nvim_create_autocmd('InsertEnter', { group = group, callback = function() update_match(true) end })
+
+-- '>>' / '<<' and typing '#' keep the indent of the #directives (the guards of the headers indent their content):
+-- 'smartindent', and 'cindent' with '0#' in 'cinkeys', send the lines starting with '#' to the first column
+vim.api.nvim_create_autocmd('FileType', {
+    group = vim.api.nvim_create_augroup('HashIndent', { clear = true }),
+    callback = function(args)
+        local buf = args.buf
+        if vim.bo[buf].indentexpr ~= '' or vim.bo[buf].cindent then
+            vim.bo[buf].smartindent = false -- The indent plugin of the language does the work, 'smartindent' only blocks '>>'
+        end
+        vim.bo[buf].cinkeys = vim.bo[buf].cinkeys:gsub(',?0#', '')
+        vim.bo[buf].indentkeys = vim.bo[buf].indentkeys:gsub(',?0#', '')
+    end,
+})

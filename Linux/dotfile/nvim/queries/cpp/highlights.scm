@@ -121,6 +121,7 @@
 [
   (type_qualifier)
   (storage_class_specifier)
+  "extern" ; extern "C" (linkage specification, not a storage class)
   "constexpr"
   "virtual"
   "override"
@@ -163,6 +164,16 @@
   "co_yield"
   "co_return"
 ] @keyword
+
+; Attribute macros of libutils (_cold, _hot, _nodiscard...): read as a type by treesitter, it does not expand macros
+((type_identifier) @attribute
+  (#lua-match? @attribute "^_[a-z][a-z_]*$"))
+
+; Keywords a macro in front of them made unreadable ('_cold void f()': 'void' lands in an ERROR node, uncolored)
+((ERROR) @type.builtin
+  (#any-of? @type.builtin "void" "bool" "char" "int" "short" "long" "float" "double" "signed" "unsigned" "auto"))
+((ERROR) @keyword.modifier
+  (#any-of? @keyword.modifier "static" "inline" "extern" "const" "constexpr" "virtual" "explicit" "friend"))
 
 ; Operators and punctuation
 [
