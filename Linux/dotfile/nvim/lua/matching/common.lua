@@ -324,21 +324,6 @@ add('sql', 'any', 'create table', 'CREATE TABLE ${1:name} (\n\tid INTEGER PRIMAR
 add('sql', 'any', 'join', '${1:INNER} JOIN ${2:table} ON ${2:table}.${3:id} = ${4:other}.${5:id}', 'Combines two tables.' .. alternatives('`LEFT JOIN`: keeps the rows without match'))
 
 --------------------------------------------------------------------------------
--- Assembly (NASM x86-64 Linux, the AT&T / GAS form in the alternatives)
---------------------------------------------------------------------------------
-local ASM = { 'asm', 'nasm' }
-add(ASM, 'any', '_start', 'section .text\nglobal _start\n\n_start:\n\t$0\n\tmov rax, 60\t\t; sys_exit\n\txor rdi, rdi\t; status 0\n\tsyscall',
-    'Program without libc (Linux x86-64).' .. alternatives('GAS: `.section .text` / `.globl _start`', 'with libc: `global main` + `ret`'), 'Snippet', 'main')
-add(ASM, 'any', 'main', 'global main\nsection .text\n\nmain:\n\t$0\n\txor eax, eax\n\tret', 'Entry point with libc (linked with gcc).', 'Snippet', 'main')
-add(ASM, 'any', 'section .data', 'section .data\n${1:message} db "${2:Hello}", 10\n${3:length} equ $ - ${1:message}', 'Initialized data.' .. alternatives('`section .bss` for the zeroed data'))
-add(ASM, 'any', 'section .bss', 'section .bss\n${1:buffer} resb ${2:256}', 'Zeroed data.')
-add(ASM, 'any', 'write', '\tmov rax, 1\t\t; sys_write\n\tmov rdi, 1\t\t; stdout\n\tmov rsi, ${1:message}\n\tmov rdx, ${2:length}\n\tsyscall', 'Prints with a system call.')
-add(ASM, 'any', 'exit', '\tmov rax, 60\t\t; sys_exit\n\tmov rdi, ${1:0}\n\tsyscall', 'Leaves the program.')
-add(ASM, 'any', 'function', '${1:name}:\n\tpush rbp\n\tmov rbp, rsp\n\t$0\n\tpop rbp\n\tret', 'Function with its stack frame.' .. alternatives('`enter` / `leave`', 'without a frame when no locals are used'))
-add(ASM, 'any', 'loop', '\tmov rcx, ${1:count}\n${2:.loop}:\n\t$0\n\tdec rcx\n\tjnz ${2:.loop}', 'Loop with a counter.' .. alternatives('`loop` instruction (slower)'))
-add(ASM, 'any', 'cmp jmp', '\tcmp ${1:rax}, ${2:0}\n\tj${3:e} ${4:.label}', 'Compare then jump.' .. alternatives('`test rax, rax` to compare with 0', '`je` `jne` `jg` `jl` `jge` `jle` `ja` `jb`'))
-
---------------------------------------------------------------------------------
 -- Shell (sh / bash / zsh)
 --------------------------------------------------------------------------------
 add('sh', 'top', 'shebang bash', '#!/usr/bin/env bash\nset -euo pipefail\n$0', 'Header of a bash script that stops on an error.')

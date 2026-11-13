@@ -42,6 +42,8 @@ end
 local function word_of(entry)
     local data = entry:get_completion_item().data
     if type(data) == 'table' and data.group then return data.group, (data.rank or 1) * 0.01 end
+    -- The word to compare when the inserted text starts with something else (a sys_write snippet starts with 'mov')
+    if type(data) == 'table' and data.word then return data.word, 0 end
     return entry:get_word(), 0
 end
 

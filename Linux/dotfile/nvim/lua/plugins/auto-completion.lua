@@ -72,6 +72,7 @@ return {
                     { name = 'include' },   -- #include "..." / <...>
                     { name = 'keywords' },  -- Keywords and #directives
                     { name = 'common' },    -- [std] main, control structures, usual includes and calls
+                    { name = 'asm' },       -- Assembly: instructions, registers, system calls, snippets (with their doc)
                     { name = 'symbols', dup = 0, max_item_count = 300 }, -- Functions, types, variables of the file and of its includes
                     { name = 'members' },   -- After '.', '->' and '::'
                     { name = 'luasnip', max_item_count = 20 },
@@ -107,10 +108,22 @@ return {
             local docs_view = require('cmp.view.docs_view')
             local open_docs = docs_view.open
             local docs_timer = vim.uv.new_timer()
+            -- The markdown of the documentation is only colored by the old syntax files there: the ** and ` stayed
+            -- visible. They are hidden (cmp sets conceallevel = 2) and the bold text gets a color, once per window
+            local function hide_markers(win)
+                if not win or not vim.api.nvim_win_is_valid(win) or vim.w[win].doc_markers then return end
+                vim.w[win].doc_markers = true
+                vim.fn.matchadd('Conceal', [[\*\*]], 10, -1, { window = win, conceal = '' })
+                vim.fn.matchadd('Conceal', [[`]], 10, -1, { window = win, conceal = '' })
+                vim.fn.matchadd('Title', [[\*\*\zs[^*]\+\ze\*\*]], 9, -1, { window = win })
+            end
             docs_view.open = function(self, e, view)
                 docs_timer:stop()
                 docs_timer:start(90, 0, vim.schedule_wrap(function()
-                    if cmp.core.view:visible() then open_docs(self, e, view) end -- Not cmp.visible(): it blocks
+                    if cmp.core.view:visible() then -- Not cmp.visible(): it blocks
+                        open_docs(self, e, view)
+                        hide_markers(self.window and self.window.win)
+                    end
                 end))
             end
 

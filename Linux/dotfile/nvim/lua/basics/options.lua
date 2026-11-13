@@ -49,3 +49,6 @@ vim.g.loaded_python3_provider = 0                                           -- N
 vim.g.loaded_node_provider = 0
 vim.g.loaded_perl_provider = 0
 vim.g.loaded_ruby_provider = 0
+
+-- Assembly: .asm / .nasm are NASM (Intel syntax, ';' comments), .s / .S stay GAS (AT&T)
+vim.filetype.add({ extension = { asm = 'nasm', nasm = 'nasm' } })

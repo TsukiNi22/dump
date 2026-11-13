@@ -1,7 +1,9 @@
 -- Help of a function / type / macro: signature and comment (from the file and its includes) under the mouse, or K
+-- Assembly: instruction, register, system call (the one set in rax above a 'syscall'), directive or label
 local M = {}
 
 local index = require('matching.index')
+local asm = require('matching.asm')
 local delay = 350 -- Milliseconds of rest before the help appears
 
 local timer = vim.uv.new_timer()
@@ -15,12 +17,25 @@ end
 local function word_at(buf, line, column) -- column: 1-based byte of the text
     local text = vim.api.nvim_buf_get_lines(buf, line - 1, line, false)[1] or ''
     for start, finish in text:gmatch('()[%w_]+()') do
-        if column >= start and column < finish then return text:sub(start, finish - 1) end
+        if column >= start and column < finish then
+            -- Assembly: the '.' of a local label / section is part of the name (.loop, .text)
+            local dot = start > 1 and text:sub(start - 1, start - 1) == '.' and asm.filetypes[vim.bo[buf].filetype]
+            return (dot and '.' or '') .. text:sub(start, finish - 1)
+        end
     end
 end
 
-local function show(entry, relative)
-    local lines = vim.split(require('matching.doc').markdown(entry), '\n')
+local function supported(buf) return index.supported(buf) or asm.filetypes[vim.bo[buf].filetype] == true end
+
+-- Markdown help of a word (row: 1-based line of the word), nil when unknown
+local function help_of(buf, word, row)
+    if asm.filetypes[vim.bo[buf].filetype] then return asm.help(buf, word, row) end
+    local entry = index.lookup(buf, word)
+    return entry and require('matching.doc').markdown(entry)
+end
+
+local function show(text, relative)
+    local lines = vim.split(text, '\n')
     local width = 20
     for _, line in ipairs(lines) do width = math.max(width, vim.fn.strdisplaywidth(line)) end
     width = math.min(width, 80)
@@ -50,13 +65,13 @@ local function show_at_mouse()
     if float and pos.winid == float.win then return end
 
     local buf = vim.api.nvim_win_get_buf(pos.winid)
-    if vim.bo[buf].buftype ~= '' or not index.supported(buf) then return end
+    if vim.bo[buf].buftype ~= '' or not supported(buf) then return end
     local word = word_at(buf, pos.line, pos.column)
     if not word or (float and float.word == word) then return end
 
     close()
-    local entry = index.lookup(buf, word)
-    if entry then float = { win = show(entry, 'mouse'), word = word } end
+    local help = help_of(buf, word, pos.line)
+    if help then float = { win = show(help, 'mouse'), word = word } end
 end
 
 local function on_move()
@@ -73,11 +88,14 @@ end
 local function on_key()
     local buf = vim.api.nvim_get_current_buf()
     local cursor = vim.api.nvim_win_get_cursor(0)
-    local word = index.supported(buf) and word_at(buf, cursor[1], cursor[2] + 1)
-    local entry = word and index.lookup(buf, word)
-    if not entry then return vim.cmd('normal! K') end
+    local word = supported(buf) and word_at(buf, cursor[1], cursor[2] + 1)
+    local help = word and help_of(buf, word, cursor[1])
+    if not help then -- The server of the buffer when one can answer, else the usual K (man page)
+        if #vim.lsp.get_clients({ bufnr = buf, method = 'textDocument/hover' }) > 0 then return vim.lsp.buf.hover() end
+        return vim.cmd('normal! K')
+    end
     close()
-    float = { win = show(entry, 'cursor'), word = word }
+    float = { win = show(help, 'cursor'), word = word }
 end
 
 function M.setup()

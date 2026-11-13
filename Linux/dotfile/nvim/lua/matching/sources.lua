@@ -190,7 +190,8 @@ local function items_of(key, words, kind)
 end
 
 local keywords = {}
-function keywords:is_available() return lists[vim.bo.filetype] ~= nil end
+local asm_filetypes = { asm = true, nasm = true } -- The [asm] source gives them with their documentation
+function keywords:is_available() return lists[vim.bo.filetype] ~= nil and not asm_filetypes[vim.bo.filetype] end
 function keywords:get_trigger_characters() return { '#' } end
 function keywords:complete(params, callback)
     local before = params.context.cursor_before_line
@@ -516,6 +517,38 @@ function words:complete(params, callback)
 end
 
 --------------------------------------------------------------------------------
+-- Assembly (NASM x86-64, matching/asm.lua): instructions, system calls, snippets and directives at the start of a
+-- line, registers / labels / sizes in the operands, the numbers of the system calls after 'mov rax,'
+--------------------------------------------------------------------------------
+local asm_source = {}
+function asm_source:is_available() return asm_filetypes[vim.bo.filetype] == true end
+function asm_source:get_trigger_characters() return { ' ', ',', '[' } end
+function asm_source:get_keyword_pattern() return [[\%([.%]\?\w\+\)]] end -- .text, .loop, %define, 60
+function asm_source:complete(params, callback)
+    local asm = require('matching.asm')
+    local before = params.context.cursor_before_line
+    if before:find(';', 1, true) then return callback({}) end -- In a comment
+
+    local typed = before:match('[.%%]?[%w_]*$') or ''
+    local head = before:sub(1, #before - #typed)
+    local context = 'operand'
+    if head:match('^%s*$') or head:match('^%s*[%w_.$?@]+:%s*$') then context = 'mnemonic'
+    elseif head:match('^%s*section%s+$') or head:match('^%s*segment%s+$') then context = 'section'
+    elseif head:match('^%s*mov%s+[re]?ax%s*,%s*$') then context = 'rax'
+    elseif head:match('^%s*[%w_.$?@]+:?%s*$') and not head:match('%s$') then return callback({}) end
+
+    local trigger = params.completion_context and params.completion_context.triggerKind == 2
+    if trigger and context == 'mnemonic' then return callback({}) end -- A space of the indent: no menu
+
+    if context == 'rax' and not typed:match('^%d*$') then context = 'operand' end -- 'mov rax, r...': a register
+    local items = asm.items(context, kinds) -- 'mov rax, ' / 'mov rax, 6': the numbers of the system calls only
+    if context == 'operand' then
+        items = vim.list_extend(vim.list_extend({}, items), asm.label_items(params.context.bufnr, kinds))
+    end
+    reply(callback, items, typed)
+end
+
+--------------------------------------------------------------------------------
 -- Tags (menu column) and priority: the special sources come before the words of the file
 --------------------------------------------------------------------------------
 local tags = {
@@ -528,6 +561,7 @@ function M.format(entry, item)
     local tag = tags[entry.source.name] or entry.source.name
     if entry:get_kind() == kinds.Module then tag = 'ns' end -- Namespaces have their own tag
     local data = entry:get_completion_item().data
+    if type(data) == 'table' and data.tag then tag = data.tag end -- [ins] [reg] [sys] [dir] [snip] [lbl] of the assembly
     if type(data) == 'table' and data.special then -- <guard>, <header>: skeletons of a whole file
         tag, item.kind = 'spe', 'Special'
         item.kind_hl_group, item.abbr_hl_group = 'Special', 'Special'
@@ -555,6 +589,7 @@ end
 
 M.sources = {
     keywords = keywords, common = common, include = include, symbols = symbols, members = members, words = words,
+    asm = asm_source,
 }
 
 -- Builds the caches of every source for a buffer (symbols of the includes, words, catalog) while nobody types: the
