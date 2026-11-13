@@ -28,7 +28,6 @@ vim.o.conceallevel = 0                                                      -- S
 vim.o.fileencoding = 'utf-8'                                                -- The encoding written to a file (default: 'utf-8')
 vim.o.cmdheight = 1                                                         -- More space in the Neovim command line for displaying messages (default: 1)
 vim.o.breakindent = true                                                    -- Enable break indent (default: false)
-vim.o.updatetime = 250                                                      -- Decrease update time (default: 4000)
 vim.o.timeoutlen = 300                                                      -- Time to wait for a mapped sequence to complete (in milliseconds) (default: 1000)
 vim.o.backup = false                                                        -- Creates a backup file (default: false)
 vim.o.writebackup = false                                                   -- If a file is being edited by another program (or was written to file while editing with another program), it is not allowed to be edited (default: true)
@@ -50,5 +49,11 @@ vim.g.loaded_node_provider = 0
 vim.g.loaded_perl_provider = 0
 vim.g.loaded_ruby_provider = 0
 
--- Assembly: .asm / .nasm are NASM (Intel syntax, ';' comments), .s / .S stay GAS (AT&T)
-vim.filetype.add({ extension = { asm = 'nasm', nasm = 'nasm' } })
+-- Assembly: .asm / .nasm / .inc are NASM (Intel syntax, ';' comments; .inc was read as POV-Ray), .s / .S stay GAS (AT&T)
+-- C++: the template implementations included by the headers (.tpp was read as an unknown 'tpp')
+vim.filetype.add({
+    extension = {
+        asm = 'nasm', nasm = 'nasm', inc = 'nasm',
+        tpp = 'cpp', ipp = 'cpp', inl = 'cpp', txx = 'cpp',
+    },
+})
