@@ -213,6 +213,20 @@ return {
                 settings = { python = { analysis = { typeCheckingMode = 'basic' } } },
             })
 
+            -- clangd marks the code of the #if / #else branches that are not compiled as a 'comment' token: the whole
+            -- branch turned grey (strings, #define, #warning...) a moment after the file was shown. The group is
+            -- emptied: treesitter keeps its colors there (again after each change of colorscheme)
+            local function keep_inactive_colors()
+                for _, group in ipairs({ '@lsp.type.comment', '@lsp.type.comment.c', '@lsp.type.comment.cpp' }) do
+                    vim.api.nvim_set_hl(0, group, {})
+                end
+            end
+            keep_inactive_colors()
+            vim.api.nvim_create_autocmd('ColorScheme', {
+                group = vim.api.nvim_create_augroup('LspInactiveColors', { clear = true }),
+                callback = keep_inactive_colors,
+            })
+
             -- Keys of the buffers with a server: gd / gD go to the definition / declaration (K, grr, grn, gra are the
             -- defaults of Neovim: hover, references, rename, code action)
             vim.api.nvim_create_autocmd('LspAttach', {
