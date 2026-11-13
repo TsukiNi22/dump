@@ -364,6 +364,18 @@ function M.entries(buf)
     return cached.all
 end
 
+-- Back to a buffer (Ctrl+E, Ctrl+T, :e...): its headers may have changed meanwhile, they are read again in the
+-- background (the current entries are used meanwhile, the unchanged headers come from the cache of the files)
+function M.refresh(buf)
+    if follow_cache[buf] then follow_cache[buf].time = 0 end
+    if buffer_cache[buf] then buffer_cache[buf].tick = -1 end
+end
+
+vim.api.nvim_create_autocmd('BufEnter', {
+    group = vim.api.nvim_create_augroup('IndexRefresh', { clear = true }),
+    callback = function(args) M.refresh(args.buf) end,
+})
+
 -- Entry by name (functions, types, macros...) for the help under the mouse
 function M.lookup(buf, name)
     local best

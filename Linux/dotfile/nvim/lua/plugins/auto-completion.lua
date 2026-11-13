@@ -31,7 +31,8 @@ return {
                     ['<C-b>'] = cmp.mapping.scroll_docs(-4),
                     ['<C-f>'] = cmp.mapping.scroll_docs(4),
                     ['<C-Space>'] = cmp.mapping.complete(),
-                    ['<C-e>'] = cmp.mapping(function()
+                    ['<C-e>'] = cmp.mapping(function(fallback)
+                        if not cmp.core.view:visible() then return fallback() end -- No menu: the usual Ctrl+E (file explorer)
                         require('matching.include_trigger').dismiss() -- No automatic menu again on this line
                         cmp.abort()
                     end, { 'i' }),

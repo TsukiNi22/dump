@@ -291,6 +291,7 @@ function M.toggle()
     else
         vim.diagnostic.reset(namespace)
         vim.diagnostic.reset(fast_namespace)
+        checked = {} -- The other buffers lost their results: checked again when they are shown (not skipped as unchanged)
     end
     vim.cmd('redraw')
     vim.api.nvim_echo({ { 'Diagnostics ' .. (M.enabled and 'ON' or 'OFF'), M.enabled and 'DiagnosticOk' or 'WarningMsg' } }, true, {})
@@ -326,7 +327,11 @@ function M.setup()
     vim.api.nvim_create_autocmd('ColorScheme', { group = group, callback = set_highlights })
     vim.api.nvim_create_autocmd({ 'TextChanged', 'TextChangedI', 'BufEnter', 'BufWritePost', 'InsertLeave' }, {
         group = group,
-        callback = function(args) schedule(args.buf) end,
+        callback = function(args)
+            -- Back to a file (Ctrl+E, Ctrl+T, :e...): checked again even when it did not change, its headers may have
+            if args.event == 'BufEnter' then checked[args.buf] = nil end
+            schedule(args.buf)
+        end,
     })
     vim.api.nvim_create_autocmd({ 'BufReadPost', 'BufNewFile' }, { -- The precompiled header of the includes, in advance
         group = group,
