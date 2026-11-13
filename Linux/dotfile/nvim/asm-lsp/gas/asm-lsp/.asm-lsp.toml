@@ -1,0 +1,11 @@
+# asm-lsp config of the GAS files (.s / .S, AT&T syntax); a .asm-lsp.toml at the root of a project overrides it
+[default_config]
+assembler = "gas"
+instruction_set = "x86-64"
+
+[default_config.opts]
+# Only gcc gives the errors (by default gcc then clang both run: each error twice); nothing is written
+compiler = "gcc"
+compile_flags_txt = ["-c", "-o", "/dev/null"]
+diagnostics = true
+default_diagnostics = true

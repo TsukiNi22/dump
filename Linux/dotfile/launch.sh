@@ -76,10 +76,8 @@ else
     skipped "Neovim c2dmp library (clang++ or libutils missing)"
 fi
 
-# asm-lsp reads the NASM syntax (its errors come from nasm instead of gcc)
-run_as_user mkdir -p "$USER_HOME/.config/asm-lsp"
-run_as_user cp "$SCRIPT_DIR/asm-lsp/.asm-lsp.toml" "$USER_HOME/.config/asm-lsp/.asm-lsp.toml"
 # Language servers of the user (asm, lua, python, bash, json, yaml, markdown, cmake): release binaries + npm
+# (the configs of asm-lsp, NASM and GAS, are in nvim/asm-lsp)
 run_as_user chmod +x "$USER_HOME/.config/nvim/scripts/install-lsp.sh"
 if run_as_user "$USER_HOME/.config/nvim/scripts/install-lsp.sh" > /dev/null 2>&1; then
     ok "Neovim language servers installed"

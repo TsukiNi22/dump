@@ -190,7 +190,8 @@ local function items_of(key, words, kind)
 end
 
 local keywords = {}
-local asm_filetypes = { asm = true, nasm = true } -- The [asm] source gives them with their documentation
+-- NASM: the [asm] source gives them with their documentation; GAS: its asm-lsp server (the words here are NASM)
+local asm_filetypes = { asm = true, nasm = true }
 function keywords:is_available() return lists[vim.bo.filetype] ~= nil and not asm_filetypes[vim.bo.filetype] end
 function keywords:get_trigger_characters() return { '#' } end
 function keywords:complete(params, callback)
@@ -521,7 +522,7 @@ end
 -- line, registers / labels / sizes in the operands, the numbers of the system calls after 'mov rax,'
 --------------------------------------------------------------------------------
 local asm_source = {}
-function asm_source:is_available() return asm_filetypes[vim.bo.filetype] == true end
+function asm_source:is_available() return require('matching.asm').filetypes[vim.bo.filetype] == true end
 function asm_source:get_trigger_characters() return { ' ', ',', '[' } end
 function asm_source:get_keyword_pattern() return [[\%([.%]\?\w\+\)]] end -- .text, .loop, %define, 60
 function asm_source:complete(params, callback)

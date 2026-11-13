@@ -168,6 +168,7 @@ return {
                 clangd = 'clangd',
                 lua_ls = 'lua-language-server',
                 asm_lsp = 'asm-lsp',
+                asm_lsp_gas = 'asm-lsp',
                 pyright = 'pyright-langserver',
                 bashls = 'bash-language-server',
                 jsonls = 'vscode-json-language-server',
@@ -176,12 +177,26 @@ return {
                 neocmake = 'neocmakelsp',
             }
 
-            -- asm-lsp: NASM files too (~/.config/asm-lsp/.asm-lsp.toml picks the NASM syntax). Its completion is left out:
-            -- the [asm] source already gives the instructions with their operands, the syscalls and the snippets (the
-            -- same names twice otherwise); hover, go to definition, references and the nasm errors stay
+            -- asm-lsp: one server per syntax, each with its global config (asm-lsp/<syntax>/asm-lsp/.asm-lsp.toml of
+            -- this config, given through XDG_CONFIG_HOME; a .asm-lsp.toml at the root of a project still overrides it):
+            --   NASM (.asm, .nasm, .inc): errors from nasm. Its completion is left out: the [asm] source already gives
+            --     the instructions with their operands, the syscalls and the snippets (the same names twice otherwise)
+            --   GAS (.s, .S, AT&T syntax): errors from gcc, with its completion
+            local function asm_cmd(syntax)
+                local home = vim.fn.stdpath('config') .. '/asm-lsp/' .. syntax
+                return function(dispatchers)
+                    return vim.lsp.rpc.start({ 'asm-lsp' }, dispatchers, { env = { XDG_CONFIG_HOME = home } })
+                end
+            end
             vim.lsp.config('asm_lsp', {
-                filetypes = { 'asm', 'nasm', 'vmasm' },
+                cmd = asm_cmd('nasm'),
+                filetypes = { 'nasm' },
                 on_init = function(client) client.server_capabilities.completionProvider = nil end,
+            })
+            vim.lsp.config('asm_lsp_gas', {
+                cmd = asm_cmd('gas'),
+                filetypes = { 'asm', 'vmasm' },
+                root_markers = { '.asm-lsp.toml', '.git' },
             })
             -- lua_ls: the Lua of Neovim (LuaJIT, the 'vim' global and its API known), no "undefined global vim"
             vim.lsp.config('lua_ls', {

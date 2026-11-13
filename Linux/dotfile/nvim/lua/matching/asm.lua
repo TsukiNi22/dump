@@ -3,7 +3,8 @@
 -- completion ([ins] [reg] [sys] [dir] [snip] [lbl]) and the help under the mouse / K
 local M = {}
 
-M.filetypes = { asm = true, nasm = true }
+-- NASM only: the GAS files ('asm', AT&T syntax: 'movq $60, %rax') get the completion of their asm-lsp server
+M.filetypes = { nasm = true }
 
 local syscall_registers = { 'rdi', 'rsi', 'rdx', 'r10', 'r8', 'r9' }
 local comment_column = 24 -- Column of the ';' in the generated snippets

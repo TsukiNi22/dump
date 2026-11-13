@@ -1,0 +1,11 @@
+# asm-lsp config of the NASM files (.asm, .nasm, .inc); a .asm-lsp.toml at the root of a project overrides it
+[default_config]
+assembler = "nasm"
+instruction_set = "x86-64"
+
+[default_config.opts]
+# The errors come from nasm itself (gcc by default, which does not read the NASM syntax); nothing is written
+compiler = "nasm"
+compile_flags_txt = ["-f", "elf64", "-o", "/dev/null"]
+diagnostics = true
+default_diagnostics = true
