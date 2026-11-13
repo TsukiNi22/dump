@@ -111,11 +111,10 @@ format() {
         "Custom Package & Binary")
             title "Custom Package & Binary"
             echo "Choose any of (my-universe, every package of TsukiNi22):"
-            echo "  - universe: the public package repositories (rpm / deb / pacman) + libutils,"
+            echo "  - universe: the package repositories (rpm / deb / pacman) + libutils,"
             echo "    every build (optimized, debug, asan + headers; built from the sources on arch as a fallback)"
             echo "  - xstyle: coding style checker, its package (else built from its repository into /usr/local)"
-            echo "  - xdesk: private, asks to set up gh auth, mirrors its gh-pages and installs its package"
-            note "Without gh auth the private packages (xdesk) fail: missing permissions"
+            echo "  - xdesk: remote desktop & terminal, its package"
             ;;
         "AI")
             title "AI"
